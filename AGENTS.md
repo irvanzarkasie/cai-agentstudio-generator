@@ -75,6 +75,17 @@ export HYBRID_RAG_SOURCE=/path/to/generative_ai_design_patterns
 python scripts/bundle_hybrid_data.py --source "$HYBRID_RAG_SOURCE"
 ```
 
+### Import as UI workflow template (visual builder)
+
+CollatedInput GitHub deploys are not editable in the Agent Studio GUI. To visualize the workflow:
+
+```bash
+python scripts/collated_to_workflow_template.py
+python scripts/import_workflow_template.py --insecure   # needs .env
+```
+
+See [docs/WORKFLOW_TEMPLATE.md](docs/WORKFLOW_TEMPLATE.md).
+
 ### Deploy (human or agent with credentials)
 
 Requires `.env` with `CDSW_APIV2_KEY`, `OPENAI_API_KEY`, `AGENT_STUDIO_URL`, `CAI_WORKBENCH_HOST`.
