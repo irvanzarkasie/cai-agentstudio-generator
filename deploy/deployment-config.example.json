@@ -1,7 +1,8 @@
 {
   "workflow_target": {
     "type": "github",
-    "github_url": "https://github.com/irvanzarkasie/cai-agentstudio-generator.git"
+    "github_url": "https://github.com/irvanzarkasie/cai-agentstudio-generator.git",
+    "workflow_name": "Calculator Workflow"
   },
   "deployment_target": {
     "type": "workbench_model",

@@ -46,8 +46,7 @@ def apply_env_overrides(config: dict[str, Any]) -> dict[str, Any]:
             default_llm_id,
             {
                 "api_key": openai_key,
-                "api_base": "https://api.openai.com/v1",
-                "provider_model": "gpt-4o-mini",
+                "provider_model": "gpt-4o",
                 "model_type": "OPENAI",
             },
         )
@@ -57,7 +56,17 @@ def apply_env_overrides(config: dict[str, Any]) -> dict[str, Any]:
 
 def deploy(config: dict[str, Any], agent_studio_url: str, api_key: str, verify_tls: bool = True) -> dict:
     endpoint = urljoin(agent_studio_url.rstrip("/") + "/", "api/grpc/deployWorkflow")
-    body = {"deployment_payload": json.dumps(config)}
+    generation_config = config.get("deployment_config", {}).get("generation_config", {})
+    # Full DeployWorkflowRequest shape — empty maps must be {} not omitted.
+    body = {
+        "workflow_id": "",
+        "env_variable_overrides": {},
+        "tool_user_parameters": {},
+        "mcp_instance_env_vars": {},
+        "bypass_authentication": False,
+        "generation_config": json.dumps(generation_config),
+        "deployment_payload": json.dumps(config),
+    }
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",

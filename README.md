@@ -252,6 +252,7 @@ Task input key **`expression`** matches the `{expression}` placeholder in `colla
 |---------|---------|
 | `workflow_target.type: github` | Clone repo and package as artifact |
 | `workflow_target.github_url` | Public/accessible Git URL |
+| `workflow_target.workflow_name` | Must match `collated_input.json` → `workflow.name` |
 | `deployment_target.type: workbench_model` | Deploy as CML Model + App |
 | `deployment_config.generation_config` | LLM generation defaults |
 | `deployment_config.llm_config` | Injected by `deploy.py` from `OPENAI_API_KEY` |
