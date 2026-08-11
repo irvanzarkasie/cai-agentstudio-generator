@@ -2,7 +2,9 @@
 
 Infrastructure-as-code (IaC) workflow for **Cloudera AI Agent Studio** using the **CollatedInput** format and **GitHub deploy target**.
 
-This repository defines a sample **Calculator Workflow** (single agent + calculator tool + OpenAI) at the **repository root**, which is required for Agent Studio's GitHub packaging (`workflow.yaml` must live at the clone root).
+This repository defines the **Hybrid RAG Agentic Workflow** (ported from CrewAI `crew_hybrid`) at the **repository root**, which is required for Agent Studio's GitHub packaging (`workflow.yaml` must live at the clone root).
+
+The earlier **Calculator Workflow** was a deploy smoke test; this repo now tracks the CrewAI → CollatedInput migration path.
 
 ## Environment reference (irz-tstenv04)
 
@@ -23,10 +25,11 @@ This repository defines a sample **Calculator Workflow** (single agent + calcula
 .
 ├── workflow.yaml                 # Artifact manifest (type: collated_input)
 ├── collated_input.json           # Full workflow definition (agents, tasks, tools, LLMs)
-├── studio-data/                  # Tool source code referenced by collated_input.json
-│   └── workflows/calculator/tools/calculator_tool/
-│       ├── tool.py
-│       └── requirements.txt
+├── studio-data/                  # Tool source, shared lib, bundled graph + slices
+│   └── workflows/hybrid_rag_agentic/
+│       ├── data/                 # graph.json + book slices
+│       ├── lib/                  # hybrid_rag toolkit
+│       └── tools/                # 11 tools (2 implemented, 9 Phase 1 stubs)
 ├── deploy/
 │   └── deployment-config.example.json
 ├── scripts/
@@ -35,9 +38,8 @@ This repository defines a sample **Calculator Workflow** (single agent + calcula
 │   ├── deploy.py                 # Trigger GitHub-target deploy via Agent Studio API
 │   └── crewai_to_collated.py     # Phase 0: CrewAI YAML → CollatedInput skeleton
 ├── converters/
-│   └── crew_specs/               # Crew mode specs (agent/task/tool mapping)
-├── examples/
-│   └── crew_hybrid_agentic/      # Generated export from crew_hybrid (Phase 0)
+│   ├── crew_specs/               # Crew mode specs (agent/task/tool mapping)
+│   └── hybrid_rag_lib/           # Shared toolkit source (copied into studio-data on bundle)
 ├── .env.example                  # Local secrets template (copy to .env)
 └── requirements-dev.txt
 ```
@@ -228,7 +230,7 @@ APP_URL="https://<deployed-app-subdomain>.ml-1e596f2f-177.irz-tste.a465-9q4k.clo
 curl -sS -X POST "$APP_URL/api/workflow/kickoff" \
   -H "Authorization: Bearer $CDSW_APIV2_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"inputs": {"expression": "25 * 4 + 10"}}' | python3 -m json.tool
+  -d '{"inputs": {"query": "enterprise RAG with reranking"}}' | python3 -m json.tool
 ```
 
 Note the `trace_id` in the response, then poll events:
@@ -238,7 +240,7 @@ curl -sS "$APP_URL/api/workflow/events?trace_id=<TRACE_ID>" \
   -H "Authorization: Bearer $CDSW_APIV2_KEY" | python3 -m json.tool
 ```
 
-Task input key **`expression`** matches the `{expression}` placeholder in `collated_input.json` tasks.
+Task input key **`query`** matches the `{query}` placeholder in `collated_input.json` tasks.
 
 ### Step 10 — Iterate (GitOps loop)
 
@@ -266,32 +268,26 @@ Convert a CrewAI project's `agents.yaml` + `tasks.yaml` into a CollatedInput ske
 ```bash
 python scripts/crewai_to_collated.py \
   --config-dir /path/to/crew_hybrid/config \
-  --crew-spec converters/crew_specs/crew_hybrid_agentic.yaml \
-  -o examples/crew_hybrid_agentic
+  --crew-spec converters/crew_specs/crew_hybrid_agentic.yaml
 
-python scripts/validate.py --root examples/crew_hybrid_agentic
+python scripts/bundle_hybrid_data.py \
+  --source /path/to/generative_ai_design_patterns
+
+python scripts/validate.py
+python scripts/verify_hybrid_mvp.py
 ```
 
-Output: `examples/crew_hybrid_agentic/` with 3 agents, 3 tasks, 11 stub tools. Task descriptions preserve `{query}` placeholders for kickoff.
-
-Phase 0 does **not** port tool logic or bundle graph/slice data — see `examples/crew_hybrid_agentic/README.md`.
+Output at **repository root**: 3 agents, 3 tasks, 11 tools. Phase 1 implements `search_design_patterns` and `retrieve_pattern_technical_context`; the rest are stubs until Phase 2.
 
 ### Phase 1 — bundle hybrid RAG data + port core tools
-
-After Phase 0 export, bundle corpus data and implement the first two tools:
 
 ```bash
 python scripts/bundle_hybrid_data.py \
   --source /path/to/generative_ai_design_patterns
 
 python scripts/test_hybrid_tools.py
-python scripts/validate.py --root examples/crew_hybrid_agentic
+python scripts/verify_hybrid_mvp.py
 ```
-
-This copies `graph.json`, book slices, shared `hybrid_rag_lib`, and real implementations for:
-
-- `search_design_patterns`
-- `retrieve_pattern_technical_context`
 
 ---
 

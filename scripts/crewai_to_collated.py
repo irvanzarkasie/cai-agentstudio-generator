@@ -291,9 +291,9 @@ def main() -> int:
     parser.add_argument(
         "-o",
         "--output",
-        required=True,
         type=Path,
-        help="Output directory for workflow.yaml + collated_input.json + studio-data/",
+        default=REPO_ROOT,
+        help="Output directory for workflow.yaml + collated_input.json + studio-data/ (default: repo root)",
     )
     parser.add_argument(
         "--dry-run",

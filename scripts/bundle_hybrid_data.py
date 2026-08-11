@@ -10,7 +10,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SOURCE = Path("/Users/izarkasie/Documents/sourcecodes/docling-conv-docs/generative_ai_design_patterns")
-DEFAULT_ARTIFACT = REPO_ROOT / "examples" / "crew_hybrid_agentic"
+DEFAULT_ARTIFACT = REPO_ROOT
 WORKFLOW_REL = Path("studio-data/workflows/hybrid_rag_agentic")
 
 SEARCH_TOOL = '''\

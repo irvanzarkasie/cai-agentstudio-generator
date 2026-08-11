@@ -2,7 +2,7 @@
   "workflow_target": {
     "type": "github",
     "github_url": "https://github.com/irvanzarkasie/cai-agentstudio-generator.git",
-    "workflow_name": "Calculator Workflow"
+    "workflow_name": "Hybrid RAG Agentic Workflow"
   },
   "deployment_target": {
     "type": "workbench_model",

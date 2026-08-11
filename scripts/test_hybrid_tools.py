@@ -10,8 +10,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TOOLS_ROOT = (
-    REPO_ROOT
-    / "examples/crew_hybrid_agentic/studio-data/workflows/hybrid_rag_agentic/tools"
+    REPO_ROOT / "studio-data/workflows/hybrid_rag_agentic/tools"
 )
 
 
