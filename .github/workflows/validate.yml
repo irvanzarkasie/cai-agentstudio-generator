@@ -1,0 +1,29 @@
+name: Validate workflow artifact
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dev dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Validate CollatedInput artifact
+        run: python scripts/validate.py
+
+      - name: Smoke-test all hybrid RAG tools
+        run: python scripts/test_hybrid_tools.py
+
+      - name: Verify deploy readiness
+        run: python scripts/verify_hybrid_mvp.py

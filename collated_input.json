@@ -18,7 +18,7 @@
       "python_code_file_name": "tool.py",
       "python_requirements_file_name": "requirements.txt",
       "source_folder_path": "studio-data/workflows/hybrid_rag_agentic/tools/search_design_patterns",
-      "tool_metadata": "{\"user_params\": [], \"user_params_metadata\": {}, \"status\": \"phase0_stub\"}",
+      "tool_metadata": "{\"user_params\":[],\"user_params_metadata\":{},\"status\":\"implemented\"}",
       "tool_image_uri": null,
       "is_venv_tool": true
     },
@@ -28,7 +28,7 @@
       "python_code_file_name": "tool.py",
       "python_requirements_file_name": "requirements.txt",
       "source_folder_path": "studio-data/workflows/hybrid_rag_agentic/tools/get_design_pattern",
-      "tool_metadata": "{\"user_params\": [], \"user_params_metadata\": {}, \"status\": \"phase0_stub\"}",
+      "tool_metadata": "{\"user_params\":[],\"user_params_metadata\":{},\"status\":\"implemented\"}",
       "tool_image_uri": null,
       "is_venv_tool": true
     },
@@ -38,7 +38,7 @@
       "python_code_file_name": "tool.py",
       "python_requirements_file_name": "requirements.txt",
       "source_folder_path": "studio-data/workflows/hybrid_rag_agentic/tools/patterns_using_concept",
-      "tool_metadata": "{\"user_params\": [], \"user_params_metadata\": {}, \"status\": \"phase0_stub\"}",
+      "tool_metadata": "{\"user_params\":[],\"user_params_metadata\":{},\"status\":\"implemented\"}",
       "tool_image_uri": null,
       "is_venv_tool": true
     },
@@ -48,7 +48,7 @@
       "python_code_file_name": "tool.py",
       "python_requirements_file_name": "requirements.txt",
       "source_folder_path": "studio-data/workflows/hybrid_rag_agentic/tools/related_design_patterns",
-      "tool_metadata": "{\"user_params\": [], \"user_params_metadata\": {}, \"status\": \"phase0_stub\"}",
+      "tool_metadata": "{\"user_params\":[],\"user_params_metadata\":{},\"status\":\"implemented\"}",
       "tool_image_uri": null,
       "is_venv_tool": true
     },
@@ -58,7 +58,7 @@
       "python_code_file_name": "tool.py",
       "python_requirements_file_name": "requirements.txt",
       "source_folder_path": "studio-data/workflows/hybrid_rag_agentic/tools/traverse_pattern_neighborhood",
-      "tool_metadata": "{\"user_params\": [], \"user_params_metadata\": {}, \"status\": \"phase0_stub\"}",
+      "tool_metadata": "{\"user_params\":[],\"user_params_metadata\":{},\"status\":\"implemented\"}",
       "tool_image_uri": null,
       "is_venv_tool": true
     },
@@ -68,7 +68,7 @@
       "python_code_file_name": "tool.py",
       "python_requirements_file_name": "requirements.txt",
       "source_folder_path": "studio-data/workflows/hybrid_rag_agentic/tools/recommend_hybrid_agentic_workflow",
-      "tool_metadata": "{\"user_params\": [], \"user_params_metadata\": {}, \"status\": \"phase0_stub\"}",
+      "tool_metadata": "{\"user_params\":[],\"user_params_metadata\":{},\"status\":\"implemented\"}",
       "tool_image_uri": null,
       "is_venv_tool": true
     },
@@ -78,7 +78,7 @@
       "python_code_file_name": "tool.py",
       "python_requirements_file_name": "requirements.txt",
       "source_folder_path": "studio-data/workflows/hybrid_rag_agentic/tools/expand_design_patterns",
-      "tool_metadata": "{\"user_params\": [], \"user_params_metadata\": {}, \"status\": \"phase0_stub\"}",
+      "tool_metadata": "{\"user_params\":[],\"user_params_metadata\":{},\"status\":\"implemented\"}",
       "tool_image_uri": null,
       "is_venv_tool": true
     },
@@ -88,7 +88,7 @@
       "python_code_file_name": "tool.py",
       "python_requirements_file_name": "requirements.txt",
       "source_folder_path": "studio-data/workflows/hybrid_rag_agentic/tools/retrieve_pattern_technical_context",
-      "tool_metadata": "{\"user_params\": [], \"user_params_metadata\": {}, \"status\": \"phase0_stub\"}",
+      "tool_metadata": "{\"user_params\":[],\"user_params_metadata\":{},\"status\":\"implemented\"}",
       "tool_image_uri": null,
       "is_venv_tool": true
     },
@@ -98,7 +98,7 @@
       "python_code_file_name": "tool.py",
       "python_requirements_file_name": "requirements.txt",
       "source_folder_path": "studio-data/workflows/hybrid_rag_agentic/tools/build_hybrid_context_bundle",
-      "tool_metadata": "{\"user_params\": [], \"user_params_metadata\": {}, \"status\": \"phase0_stub\"}",
+      "tool_metadata": "{\"user_params\":[],\"user_params_metadata\":{},\"status\":\"implemented\"}",
       "tool_image_uri": null,
       "is_venv_tool": true
     },
@@ -108,7 +108,7 @@
       "python_code_file_name": "tool.py",
       "python_requirements_file_name": "requirements.txt",
       "source_folder_path": "studio-data/workflows/hybrid_rag_agentic/tools/validate_hybrid_retrieval",
-      "tool_metadata": "{\"user_params\": [], \"user_params_metadata\": {}, \"status\": \"phase0_stub\"}",
+      "tool_metadata": "{\"user_params\":[],\"user_params_metadata\":{},\"status\":\"implemented\"}",
       "tool_image_uri": null,
       "is_venv_tool": true
     },
@@ -118,7 +118,7 @@
       "python_code_file_name": "tool.py",
       "python_requirements_file_name": "requirements.txt",
       "source_folder_path": "studio-data/workflows/hybrid_rag_agentic/tools/reflect_on_hybrid_retrieval",
-      "tool_metadata": "{\"user_params\": [], \"user_params_metadata\": {}, \"status\": \"phase0_stub\"}",
+      "tool_metadata": "{\"user_params\":[],\"user_params_metadata\":{},\"status\":\"implemented\"}",
       "tool_image_uri": null,
       "is_venv_tool": true
     }
@@ -175,7 +175,7 @@
       "name": "Solution Architect",
       "llm_provider_model_id": "5d7e9ef3-52ff-47bb-986a-31593f6197ff",
       "crew_ai_role": "GenAI Solution Architect",
-      "crew_ai_backstory": "You synthesize the workflow blueprint, routing plan, technical dossier, and optional quality review into actionable architecture guidance. You map recommendations to our actual stack (graph.json + slices/by_50 + CrewAI tools), not generic ChromaDB demos. Include implementation order, book-grounded code references, tradeoffs, and guardrails.",
+      "crew_ai_backstory": "You synthesize the workflow blueprint, routing plan, technical dossier, and optional quality review into actionable architecture guidance. You map recommendations to our actual stack (bundled graph.json + book slices + Agent Studio hybrid RAG tools), not generic ChromaDB demos. Include implementation order, book-grounded code references, tradeoffs, and guardrails.",
       "crew_ai_goal": "Deliver a comprehensive, production-ready recommendation for: {query}",
       "crew_ai_allow_delegation": false,
       "crew_ai_verbose": true,
@@ -202,7 +202,7 @@
     },
     {
       "id": "e4c34da0-574e-4343-bc4e-17a3fea84d10",
-      "description": "Write the final recommendation for: \"{query}\".\nUse the routing plan, technical dossier, and quality evaluation. Structure as: 1. Recommended patterns (with numbers) mapped to our stack (graph.json + slices + CrewAI tools) 2. Technical implementation using book excerpts/code \u2014 NOT generic ChromaDB examples 3. Production tradeoffs, validation, guardrails (Patterns 10, 17, 31, 32)\nExplicitly note where our implementation differs from generic vector-GraphRAG tutorials.",
+      "description": "Write the final recommendation for: \"{query}\".\nUse the routing plan, technical dossier, and quality evaluation. Structure as: 1. Recommended patterns (with numbers) mapped to our stack (graph.json + bundled book slices + Agent Studio hybrid RAG tools) 2. Technical implementation using book excerpts/code \u2014 NOT generic ChromaDB examples 3. Production tradeoffs, validation, guardrails (Patterns 10, 17, 31, 32)\nExplicitly note where our implementation differs from generic vector-GraphRAG tutorials.",
       "expected_output": "Polished markdown report (800-1500 words) for an engineering team.",
       "assigned_agent_id": "258ae149-0c94-4988-807d-ca6782496f71"
     }

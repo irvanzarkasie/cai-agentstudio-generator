@@ -1,21 +1,89 @@
 # cai-agentstudio-generator
 
-Infrastructure-as-code (IaC) workflow for **Cloudera AI Agent Studio** using the **CollatedInput** format and **GitHub deploy target**.
+Infrastructure-as-code (IaC) for **Cloudera AI Agent Studio** — a self-contained **Hybrid RAG Agentic Workflow** using **CollatedInput** and **GitHub deploy**.
 
-This repository defines the **Hybrid RAG Agentic Workflow** (ported from CrewAI `crew_hybrid`) at the **repository root**, which is required for Agent Studio's GitHub packaging (`workflow.yaml` must live at the clone root).
+Answers questions about *Generative AI Design Patterns* via a 3-agent pipeline: graph routing → book retrieval → architecture synthesis. Ported from CrewAI `crew_hybrid`.
 
-The earlier **Calculator Workflow** was a deploy smoke test; this repo now tracks the CrewAI → CollatedInput migration path.
+**Everything needed to run is in this repo:** knowledge graph (32 patterns), book slices (14 files), 11 Python tools, workflow definition, and deploy scripts.
 
-## Environment reference (irz-tstenv04)
+---
 
-| Item | Value |
-|------|-------|
-| CDP environment | `irz-tstenv04-cdp-env` |
-| ML workbench | `irz-ai-workbench` |
-| Workbench URL | `https://ml-1e596f2f-177.irz-tste.a465-9q4k.cloudera.site` |
-| Agent Studio app | `https://cai-agent-studio-svf4oc.ml-1e596f2f-177.irz-tste.a465-9q4k.cloudera.site` |
-| CML project | `Agent Studio - izarkasie` |
-| GitHub repo | `git@github.com:irvanzarkasie/cai-agentstudio-generator.git` |
+## Documentation
+
+| Document | For whom |
+|----------|----------|
+| **[docs/MAINTAINER_GUIDE.md](docs/MAINTAINER_GUIDE.md)** | Full operational manual — setup, dev, deploy, troubleshoot |
+| **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** | System design, data flow, CollatedInput structure |
+| **[docs/TOOL_REFERENCE.md](docs/TOOL_REFERENCE.md)** | All 11 tools — parameters, behavior, examples |
+| **[AGENTS.md](AGENTS.md)** | Instructions for AI coding agents |
+| **[docs/README.md](docs/README.md)** | Documentation index |
+
+---
+
+## What's in the repo
+
+| Component | Location | Size / count |
+|-----------|----------|--------------|
+| Workflow definition | `workflow.yaml`, `collated_input.json` | 3 agents, 3 tasks |
+| Knowledge graph | `studio-data/.../data/graph.json` | 32 patterns, 241 concepts |
+| Book corpus | `studio-data/.../data/slices/pages_*.md` | 14 files (~1 MB) |
+| Hybrid RAG toolkit | `converters/hybrid_rag_lib/` → copied to `studio-data/.../lib/` | Source of truth |
+| Tools (all implemented) | `studio-data/.../tools/` | 11 Python venv tools |
+| Deploy scripts | `scripts/deploy.py`, `validate.py`, etc. | |
+
+No external corpus or CrewAI project is required at **deploy or runtime**.
+
+---
+
+## Quick start
+
+### 1. Clone and configure
+
+```bash
+git clone git@github.com:irvanzarkasie/cai-agentstudio-generator.git
+cd cai-agentstudio-generator
+
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+
+cp .env.example .env
+# Edit .env: CAI_WORKBENCH_HOST, AGENT_STUDIO_URL, CDSW_APIV2_KEY, OPENAI_API_KEY
+set -a && source .env && set +a
+```
+
+### 2. Validate locally
+
+```bash
+python scripts/validate.py
+python scripts/test_hybrid_tools.py
+python scripts/verify_hybrid_mvp.py
+```
+
+Expected: all pass, `All 11 hybrid RAG tool smoke tests OK`.
+
+### 3. Push and deploy
+
+```bash
+git push origin main
+
+python scripts/deploy.py \
+  --config deploy/deployment-config.example.json \
+  --wait 300 \
+  --insecure
+```
+
+First deploy takes 5–10 minutes. See [docs/MAINTAINER_GUIDE.md](docs/MAINTAINER_GUIDE.md) for monitoring and testing.
+
+### 4. Test deployed workflow
+
+```bash
+curl -X POST "$APP_URL/api/workflow/kickoff" \
+  -H "Authorization: Bearer $CDSW_APIV2_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"inputs": {"query": "enterprise RAG with reranking"}}'
+```
+
+Kickoff input key: **`query`**.
 
 ---
 
@@ -23,341 +91,111 @@ The earlier **Calculator Workflow** was a deploy smoke test; this repo now track
 
 ```text
 .
-├── workflow.yaml                 # Artifact manifest (type: collated_input)
-├── collated_input.json           # Full workflow definition (agents, tasks, tools, LLMs)
-├── studio-data/                  # Tool source, shared lib, bundled graph + slices
-│   └── workflows/hybrid_rag_agentic/
-│       ├── data/                 # graph.json + book slices
-│       ├── lib/                  # hybrid_rag toolkit
-│       └── tools/                # 11 tools (2 implemented, 9 Phase 1 stubs)
-├── deploy/
-│   └── deployment-config.example.json
-├── scripts/
-│   ├── validate.py               # Validate artifact before push/deploy
-│   ├── package.py                # Build artifact.tar.gz locally (optional)
-│   ├── deploy.py                 # Trigger GitHub-target deploy via Agent Studio API
-│   └── crewai_to_collated.py     # Phase 0: CrewAI YAML → CollatedInput skeleton
+├── workflow.yaml                 # CollatedInput manifest (must be at repo root)
+├── collated_input.json           # Agents, tasks, tools, LLM config
+├── studio-data/workflows/hybrid_rag_agentic/
+│   ├── data/                     # graph.json + book slices (bundled corpus)
+│   ├── lib/                      # HybridRAGToolkit runtime copy
+│   └── tools/                    # 11 tool entrypoints (tool.py + requirements.txt)
 ├── converters/
-│   ├── crew_specs/               # Crew mode specs (agent/task/tool mapping)
-│   └── hybrid_rag_lib/           # Shared toolkit source (copied into studio-data on bundle)
-├── .env.example                  # Local secrets template (copy to .env)
+│   ├── hybrid_rag_lib/           # Toolkit source of truth
+│   └── crew_specs/               # CrewAI → CollatedInput mapping spec
+├── scripts/
+│   ├── validate.py               # Structural validation
+│   ├── test_hybrid_tools.py      # All 11 tools smoke test
+│   ├── verify_hybrid_mvp.py      # Deploy readiness gate
+│   ├── bundle_hybrid_data.py     # Copy lib + regenerate tools (+ optional corpus refresh)
+│   ├── crewai_to_collated.py     # CrewAI YAML → CollatedInput (regeneration)
+│   └── deploy.py                 # Agent Studio GitHub deploy
+├── deploy/deployment-config.example.json
+├── docs/                         # Detailed documentation
+├── AGENTS.md                     # AI agent instructions
+├── .env.example
 └── requirements-dev.txt
 ```
 
 ---
 
+## Workflow overview
+
+**Hybrid RAG Agentic Workflow** — sequential 3-agent pipeline:
+
+| Agent | Role | Tools |
+|-------|------|-------|
+| Pattern Router | Graph search, neighborhood traversal, workflow stack | 7 graph tools |
+| Technical Researcher | Book slice retrieval, validation, Self-RAG reflection | 4 retrieval tools |
+| Solution Architect | Final architecture report | None (synthesis only) |
+
+**Hybrid RAG pattern:** structured graph routing (`graph.json`) + section-aware book excerpt retrieval (markdown slices). No external vector DB at runtime.
+
+---
+
+## Common maintainer tasks
+
+| Task | Command |
+|------|---------|
+| Validate before push | `python scripts/verify_hybrid_mvp.py` |
+| Edit retrieval logic | Edit `converters/hybrid_rag_lib/hybrid_rag.py` → `python scripts/bundle_hybrid_data.py` |
+| Edit agent prompts | Edit `collated_input.json` |
+| Refresh corpus | `python scripts/bundle_hybrid_data.py --source /path/to/generative_ai_design_patterns` |
+| Redeploy | `git push` then `python scripts/deploy.py ...` |
+
+Full details: [docs/MAINTAINER_GUIDE.md](docs/MAINTAINER_GUIDE.md).
+
+---
+
+## Environment reference (irz-tstenv04)
+
+| Item | Value |
+|------|-------|
+| CDP environment | `irz-tstenv04-cdp-env` |
+| Workbench URL | `https://ml-1e596f2f-177.irz-tste.a465-9q4k.cloudera.site` |
+| Agent Studio | `https://cai-agent-studio-svf4oc.ml-1e596f2f-177.irz-tste.a465-9q4k.cloudera.site` |
+| CML project | `Agent Studio - izarkasie` |
+| GitHub repo | `git@github.com:irvanzarkasie/cai-agentstudio-generator.git` |
+
+---
+
 ## Prerequisites
 
-1. **Agent Studio** installed and running in project `Agent Studio - izarkasie`.
-2. **OpenAI** registered in Agent Studio (Models / LLM providers).
-3. **CML API v2 key** with API scope (Workbench → User Settings → API Keys).
-4. **OpenAI API key** for runtime LLM calls (passed at deploy time via `llm_config`).
-5. **Python 3.10+** locally for validation scripts.
-6. **Git + SSH** access to GitHub (`ssh -T git@github.com`).
-
-Verify CDP / workbench from CLI:
-
-```bash
-cdp environments describe-environment --environment-name irz-tstenv04-cdp-env
-cdp ml describe-workspace --environment-name irz-tstenv04-cdp-env --workspace-name irz-ai-workbench
-```
+1. Agent Studio installed in a CML project
+2. OpenAI (`gpt-4o`) registered in Agent Studio
+3. CML API v2 key (API + Application scope)
+4. OpenAI API key for deploy-time `llm_config`
+5. Python 3.10+ for local scripts
+6. GitHub repo accessible from workbench
 
 ---
 
-## Step-by-step manual guide
+## CI
 
-### Step 1 — Clone and configure secrets
-
-```bash
-git clone git@github.com:irvanzarkasie/cai-agentstudio-generator.git
-cd cai-agentstudio-generator
-
-cp .env.example .env
-```
-
-Edit `.env` (never commit this file):
-
-```bash
-CAI_WORKBENCH_HOST=https://ml-1e596f2f-177.irz-tste.a465-9q4k.cloudera.site
-AGENT_STUDIO_URL=https://cai-agent-studio-svf4oc.ml-1e596f2f-177.irz-tste.a465-9q4k.cloudera.site
-CDSW_APIV2_KEY=<your-cml-api-v2-key>
-OPENAI_API_KEY=<your-openai-api-key>
-GITHUB_WORKFLOW_URL=https://github.com/irvanzarkasie/cai-agentstudio-generator.git
-```
-
-Load env in your shell:
-
-```bash
-set -a && source .env && set +a
-```
-
-### Step 2 — Install dev dependencies
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
-```
-
-### Step 3 — Validate workflow artifact
-
-```bash
-python scripts/validate.py
-```
-
-Expected output: `Validation OK`
-
-This checks:
-
-- `workflow.yaml` declares `type: collated_input`
-- `collated_input.json` has consistent agent/task/tool references
-- Tool files exist under `studio-data/...`
-
-### Step 4 — (Optional) Package artifact locally
-
-```bash
-python scripts/package.py -o .artifacts/artifact.tar.gz
-tar -tzf .artifacts/artifact.tar.gz | head
-```
-
-You should see `workflow.yaml`, `collated_input.json`, and `studio-data/...` at the archive root.
-
-### Step 5 — Push workflow to GitHub
-
-Agent Studio's GitHub deploy target **clones the repo**; the deployable files must be at the **repository root**.
-
-```bash
-git status
-git add .
-git commit -m "Add Calculator Workflow CollatedInput artifact and deploy scripts"
-git push -u origin main
-```
-
-If your default branch is `master`, use that instead of `main`.
-
-### Step 6 — Verify Agent Studio API access
-
-Quick check (all three endpoints must return HTTP 200):
-
-```bash
-python scripts/verify_connection.py
-```
-
-Or manually:
-
-```bash
-curl -sS "$AGENT_STUDIO_URL/api/grpc/listWorkflows" \
-  -H "Authorization: Bearer $CDSW_APIV2_KEY" | python3 -m json.tool
-```
-
-**If you see `malformed apikey` (HTTP 500) or `401 Unauthorized`:**
-
-1. In the workbench, go to **User Settings → API Keys → Create API Key**
-2. Set **Scope** to include **API** (required for `/api/v2/*`)
-3. For Agent Studio `/api/grpc/*` calls, also enable **Application** scope if available
-4. Copy the **full** key immediately after creation (64-character hex string)
-5. Update `.env` and re-run `python scripts/verify_connection.py`
-
-Do not use session cookies or CDP CLI credentials in place of a CML API v2 key.
-
-```bash
-curl -sS "$AGENT_STUDIO_URL/api/grpc/getStudioDefaultModel" \
-  -H "Authorization: Bearer $CDSW_APIV2_KEY" | python3 -m json.tool
-```
-
-A JSON response (not a login redirect) confirms the API key works.
-
-List CML projects (find project ID):
-
-```bash
-curl -sS "$CAI_WORKBENCH_HOST/api/v2/projects?search_filter=izarkasie" \
-  -H "Authorization: Bearer $CDSW_APIV2_KEY" | python3 -m json.tool
-```
-
-### Step 7 — Deploy via GitHub target
-
-Copy example config (optional — deploy script uses example + env overrides):
-
-```bash
-cp deploy/deployment-config.example.json deploy/deployment-config.local.json
-# Edit github_url if needed; keep secrets out of this file — use .env
-```
-
-Run deploy:
-
-```bash
-python scripts/deploy.py \
-  --config deploy/deployment-config.example.json \
-  --wait 30
-```
-
-What happens internally:
-
-1. POST `{ "deployment_payload": "<JSON>" }` to `/api/grpc/deployWorkflow`
-2. Agent Studio clones `github_url` from the payload
-3. Packages `workflow.yaml` + `collated_input.json` + `studio-data/` into `artifact.tar.gz`
-4. Creates/updates CML Model + Application for the workflow
-5. Injects `deployment_config.llm_config` (OpenAI key) at runtime
-
-First deploy typically takes **5–10 minutes**.
-
-### Step 8 — Monitor deployment
-
-In the Agent Studio UI:
-
-- **Agentic Workflows** → deployed workflows list
-
-Or via API:
-
-```bash
-curl -sS "$AGENT_STUDIO_URL/api/grpc/listDeployedWorkflows" \
-  -H "Authorization: Bearer $CDSW_APIV2_KEY" | python3 -m json.tool
-```
-
-In CML project **Agent Studio - izarkasie**:
-
-- Check **Models** and **Applications** for new resources
-
-### Step 9 — Test the deployed workflow
-
-After deployment completes, open the deployed workflow's **Application** URL in the workbench.
-
-Kick off via application API:
-
-```bash
-APP_URL="https://<deployed-app-subdomain>.ml-1e596f2f-177.irz-tste.a465-9q4k.cloudera.site"
-
-curl -sS -X POST "$APP_URL/api/workflow/kickoff" \
-  -H "Authorization: Bearer $CDSW_APIV2_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"inputs": {"query": "enterprise RAG with reranking"}}' | python3 -m json.tool
-```
-
-Note the `trace_id` in the response, then poll events:
-
-```bash
-curl -sS "$APP_URL/api/workflow/events?trace_id=<TRACE_ID>" \
-  -H "Authorization: Bearer $CDSW_APIV2_KEY" | python3 -m json.tool
-```
-
-Task input key **`query`** matches the `{query}` placeholder in `collated_input.json` tasks.
-
-### Step 10 — Iterate (GitOps loop)
-
-1. Edit `collated_input.json`, tools, or tasks locally
-2. `python scripts/validate.py`
-3. `git commit && git push`
-4. Re-run `python scripts/deploy.py ...`
+GitHub Actions (`.github/workflows/validate.yml`) runs `validate.py`, `test_hybrid_tools.py`, and `verify_hybrid_mvp.py` on every push/PR.
 
 ---
 
-## CrewAI → CollatedInput (Phase 0 converter)
+## Troubleshooting (quick)
 
-Convert a CrewAI project's `agents.yaml` + `tasks.yaml` into a CollatedInput skeleton with stub tools.
+| Symptom | See |
+|---------|-----|
+| Deploy fails on CML key | [MAINTAINER_GUIDE — internal key](docs/MAINTAINER_GUIDE.md#agent-studio-internal-cml-key) |
+| GitHub clone fails | Repo must be accessible from workbench |
+| `workflow.yaml not found` | Files must be at **repo root** |
+| Workflow not editable in UI | Expected for GitHub deploy — use GitOps |
+| Tool stub responses | Redeploy after Phase 2 push |
 
-### Inputs
-
-| Input | Purpose |
-|-------|---------|
-| `--config-dir` | CrewAI config folder (`agents.yaml`, `tasks.yaml`) |
-| `--crew-spec` | Workflow metadata, agent order, task order, tool→agent mapping |
-| `-o` | Output directory for the deployable artifact tree |
-
-### Example: crew_hybrid agentic mode
-
-```bash
-python scripts/crewai_to_collated.py \
-  --config-dir /path/to/crew_hybrid/config \
-  --crew-spec converters/crew_specs/crew_hybrid_agentic.yaml
-
-python scripts/bundle_hybrid_data.py \
-  --source /path/to/generative_ai_design_patterns
-
-python scripts/validate.py
-python scripts/verify_hybrid_mvp.py
-```
-
-Output at **repository root**: 3 agents, 3 tasks, 11 tools. Phase 1 implements `search_design_patterns` and `retrieve_pattern_technical_context`; the rest are stubs until Phase 2.
-
-### Phase 1 — bundle hybrid RAG data + port core tools
-
-```bash
-python scripts/bundle_hybrid_data.py \
-  --source /path/to/generative_ai_design_patterns
-
-python scripts/test_hybrid_tools.py
-python scripts/verify_hybrid_mvp.py
-```
+Full table: [docs/MAINTAINER_GUIDE.md#troubleshooting](docs/MAINTAINER_GUIDE.md#troubleshooting).
 
 ---
 
-## Deployment payload reference
+## Security
 
-`deploy/deployment-config.example.json`:
-
-| Section | Purpose |
-|---------|---------|
-| `workflow_target.type: github` | Clone repo and package as artifact |
-| `workflow_target.github_url` | Public/accessible Git URL |
-| `workflow_target.workflow_name` | Must match `collated_input.json` → `workflow.name` |
-| `deployment_target.type: workbench_model` | Deploy as CML Model + App |
-| `deployment_config.generation_config` | LLM generation defaults |
-| `deployment_config.llm_config` | Injected by `deploy.py` from `OPENAI_API_KEY` |
-| `deployment_config.tool_config` | Tool user params (API keys for tools) |
-
-The `default_language_model_id` in `collated_input.json` must match a key in `llm_config` when passing credentials at deploy time.
-
----
-
-## Troubleshooting
-
-| Symptom | Likely cause |
-|---------|----------------|
-| GitHub clone fails during deploy | Private repo without credentials on workbench; use public repo or deploy keys |
-| `workflow.yaml not found` | Files not at **repo root** — fix layout and push |
-| Deploy job fails on LLM | Missing `OPENAI_API_KEY` in `.env` / `llm_config` |
-| 302 / login HTML from API | Invalid or expired `CDSW_APIV2_KEY` |
-| `malformed apikey` on `/api/v2/projects` | Wrong key format or non-API-scoped key — recreate in User Settings |
-| `401` on `/api/grpc/*` | Key lacks Application/API scope, or expired — recreate key |
-| Deploy metadata: `CML API v2 key validation has failed` | Agent Studio's **internal** deploy key is invalid — run `cmlApiCheck`, then `rotateCmlApi` (see below) |
-| Tool venv build fails | Check `requirements.txt` in tool folder |
-
-### Agent Studio internal CML API key
-
-Deploy uses a **separate** CML API v2 key stored in the Agent Studio project environment (`AGENT_STUDIO_API_KEY_*`), not your personal key in `.env`.
-
-Check status:
-
-```bash
-curl -sS "$AGENT_STUDIO_URL/api/grpc/cmlApiCheck" \
-  -H "Authorization: Bearer $CDSW_APIV2_KEY" | python3 -m json.tool
-```
-
-If `message` is non-empty, rotate the internal key (generates a new key with API + Application scope and redeploys workflows):
-
-```bash
-curl -sS "$AGENT_STUDIO_URL/api/grpc/rotateCmlApi" \
-  -H "Authorization: Bearer $CDSW_APIV2_KEY" | python3 -m json.tool
-```
-
-Then re-run deploy:
-
-```bash
-python scripts/deploy.py --config deploy/deployment-config.example.json --wait 180 --insecure
-```
-
----
-
-## Security notes
-
-- **Never commit** `.env`, API keys, or `deploy/deployment-config.local.json`
-- Rotate any API key that was shared in chat or logs
-- Use CML project environment variables for shared team secrets where appropriate
+- Never commit `.env`, API keys, or `deploy/deployment-config.local.json`
+- Rotate keys shared in chat or logs
+- Tools read local files only — no tool API keys required
 
 ---
 
 ## References
 
-- [Custom Workflows (CollatedInput)](https://github.com/cloudera/CAI_STUDIO_AGENT/blob/main/docs/user_guide/custom_workflows.md)
-- [Deployments guide](https://github.com/cloudera/CAI_STUDIO_AGENT/blob/main/docs/user_guide/deployments.md)
-- Agent Studio deploy engine: `studio/deployments/entry.py` in CAI_STUDIO_AGENT
+- [Cloudera Custom Workflows (CollatedInput)](https://github.com/cloudera/CAI_STUDIO_AGENT/blob/main/docs/user_guide/custom_workflows.md)
+- [Cloudera Deployments guide](https://github.com/cloudera/CAI_STUDIO_AGENT/blob/main/docs/user_guide/deployments.md)

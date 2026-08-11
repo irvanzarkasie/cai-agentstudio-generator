@@ -1,4 +1,4 @@
-"""Retrieve book-grounded technical context for one design pattern."""
+"""Retrieve book technical sections and code examples for a pattern from slice markdown."""
 
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke-test Phase 1 hybrid RAG tools locally."""
+"""Smoke-test hybrid RAG tools locally."""
 
 from __future__ import annotations
 
@@ -9,9 +9,9 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-TOOLS_ROOT = (
-    REPO_ROOT / "studio-data/workflows/hybrid_rag_agentic/tools"
-)
+TOOLS_ROOT = REPO_ROOT / "studio-data/workflows/hybrid_rag_agentic/tools"
+
+QUERY = "enterprise RAG with reranking and citations"
 
 
 def run_tool(tool_name: str, tool_params: dict) -> str:
@@ -28,8 +28,13 @@ def run_tool(tool_name: str, tool_params: dict) -> str:
     line = result.stdout.strip().splitlines()[-1]
     prefix = "tool_output "
     if not line.startswith(prefix):
-        raise RuntimeError(f"Unexpected output: {line}")
+        raise RuntimeError(f"Unexpected output from {tool_name}: {line}")
     return line[len(prefix) :]
+
+
+def assert_no_stub(tool_name: str, output: str) -> None:
+    if "STUB [" in output:
+        raise RuntimeError(f"{tool_name} still returns stub output")
 
 
 def main() -> int:
@@ -37,20 +42,67 @@ def main() -> int:
         print("Run scripts/bundle_hybrid_data.py first", file=sys.stderr)
         return 1
 
-    search = json.loads(run_tool("search_design_patterns", {"query": "enterprise RAG", "limit": 3}))
+    search = json.loads(run_tool("search_design_patterns", {"query": QUERY, "limit": 3}))
+    assert_no_stub("search_design_patterns", json.dumps(search))
     print(f"search_design_patterns: {len(search)} patterns")
     if not search:
         print("FAIL: expected search hits", file=sys.stderr)
         return 1
 
     pn = search[0]["pattern_number"]
+
     detail = json.loads(run_tool("retrieve_pattern_technical_context", {"pattern_number": pn}))
+    assert_no_stub("retrieve_pattern_technical_context", json.dumps(detail))
     print(f"retrieve_pattern_technical_context: pattern {pn}, slice={detail.get('slice')}")
     if not detail.get("technical_text"):
         print("FAIL: expected technical_text", file=sys.stderr)
         return 1
 
-    print("Phase 1 tool smoke test OK")
+    pattern = json.loads(run_tool("get_design_pattern", {"pattern_number": pn}))
+    assert_no_stub("get_design_pattern", json.dumps(pattern))
+    print(f"get_design_pattern: {pattern.get('name')}")
+
+    concepts = json.loads(run_tool("patterns_using_concept", {"concept_name": "rag"}))
+    assert_no_stub("patterns_using_concept", json.dumps(concepts))
+    print(f"patterns_using_concept: {len(concepts)} patterns for 'rag'")
+
+    related = json.loads(run_tool("related_design_patterns", {"pattern_number": pn, "limit": 3}))
+    assert_no_stub("related_design_patterns", json.dumps(related))
+    print(f"related_design_patterns: {len(related)} related")
+
+    neighborhood = json.loads(run_tool("traverse_pattern_neighborhood", {"pattern_number": pn, "max_depth": 2}))
+    assert_no_stub("traverse_pattern_neighborhood", json.dumps(neighborhood))
+    print(f"traverse_pattern_neighborhood: {len(neighborhood.get('layers', []))} layers")
+
+    stack = json.loads(run_tool("recommend_hybrid_agentic_workflow", {"query": QUERY}))
+    assert_no_stub("recommend_hybrid_agentic_workflow", json.dumps(stack))
+    print(f"recommend_hybrid_agentic_workflow: {len(stack.get('recommended_stack', []))} stack steps")
+
+    expanded = json.loads(run_tool("expand_design_patterns", {"query": QUERY}))
+    assert_no_stub("expand_design_patterns", json.dumps(expanded))
+    print(
+        "expand_design_patterns:",
+        f"{len(expanded.get('primary_patterns', []))} primary,",
+        f"{len(expanded.get('expanded_patterns', []))} expanded",
+    )
+
+    bundle = json.loads(run_tool("build_hybrid_context_bundle", {"query": QUERY}))
+    assert_no_stub("build_hybrid_context_bundle", json.dumps(bundle))
+    print(
+        "build_hybrid_context_bundle:",
+        f"{len(bundle.get('evidence', []))} evidence sections,",
+        f"{len(bundle.get('expanded_technical', []))} expanded technical",
+    )
+
+    validation = json.loads(run_tool("validate_hybrid_retrieval", {"query": QUERY}))
+    assert_no_stub("validate_hybrid_retrieval", json.dumps(validation))
+    print(f"validate_hybrid_retrieval: passed={validation.get('passed')}")
+
+    reflection = json.loads(run_tool("reflect_on_hybrid_retrieval", {"query": QUERY}))
+    assert_no_stub("reflect_on_hybrid_retrieval", json.dumps(reflection))
+    print(f"reflect_on_hybrid_retrieval: action={reflection.get('action')}")
+
+    print("All 11 hybrid RAG tool smoke tests OK")
     return 0
 
 
