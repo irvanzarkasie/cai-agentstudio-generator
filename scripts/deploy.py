@@ -46,9 +46,10 @@ def apply_env_overrides(config: dict[str, Any]) -> dict[str, Any]:
                 default_model_name = entry.get("model_name", "")
                 break
 
-    # Only inject OpenAI deploy-time credentials for direct OpenAI model names.
-    # Studio-registered aliases (e.g. agent_studio_ds_model) use Agent Studio credentials.
-    if openai_key and default_llm_id and default_model_name == "gpt-4o":
+    # Inject OpenAI deploy-time credentials for OpenAI-backed workflow models.
+    # Other studio aliases (e.g. agent_studio_ds_model) use Agent Studio credentials.
+    openai_aliases = {"gpt-4o", "agentstudiomodel"}
+    if openai_key and default_llm_id and default_model_name in openai_aliases:
         llm_config.setdefault(
             default_llm_id,
             {
