@@ -452,6 +452,7 @@ Then redeploy.
 |---------|--------------|
 | Agent returns generic ChromaDB advice | Prompt drift — verify Solution Architect backstory mentions Agent Studio stack |
 | Tool returns empty results | Check bundled `data/graph.json` and slices present in deployed artifact |
+| All tools fail instantly (0s) with agent generic fallback | Bad path resolution under `WORKFLOW_DATA_DIRECTORY` — bundled corpus lives under `studio-data/.../hybrid_rag_agentic/data/`, not `/workflow_data/data/`; redeploy latest `paths.py` fix |
 | Workflow slow | 3 sequential LLM agents + multiple tool calls; normal for complex queries |
 | Stub tool output | Old deployment — ensure Phase 2 pushed and redeployed |
 
