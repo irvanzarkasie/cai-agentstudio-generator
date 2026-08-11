@@ -1,0 +1,64 @@
+{
+  "default_language_model_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "language_models": [
+    {
+      "model_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "model_name": "gpt-4o-mini",
+      "generation_config": {
+        "max_new_tokens": 4096,
+        "temperature": 0.1,
+        "do_sample": true
+      }
+    }
+  ],
+  "tool_instances": [
+    {
+      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "name": "Calculator Tool",
+      "python_code_file_name": "tool.py",
+      "python_requirements_file_name": "requirements.txt",
+      "source_folder_path": "studio-data/workflows/calculator/tools/calculator_tool",
+      "tool_metadata": "{\"user_params\": [], \"user_params_metadata\": {}, \"status\": \"\"}",
+      "tool_image_uri": null,
+      "is_venv_tool": true
+    }
+  ],
+  "mcp_instances": [],
+  "agents": [
+    {
+      "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+      "name": "Calculator Agent",
+      "llm_provider_model_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "crew_ai_role": "Math Expert",
+      "crew_ai_backstory": "You are skilled at evaluating arithmetic expressions accurately using tools.",
+      "crew_ai_goal": "Use the calculator tool to compute expressions and present results clearly.",
+      "crew_ai_allow_delegation": false,
+      "crew_ai_verbose": true,
+      "crew_ai_cache": true,
+      "crew_ai_temperature": 0.1,
+      "crew_ai_max_iter": 10,
+      "tool_instance_ids": ["b2c3d4e5-f6a7-8901-bcde-f12345678901"],
+      "mcp_instance_ids": [],
+      "agent_image_uri": null
+    }
+  ],
+  "tasks": [
+    {
+      "id": "d4e5f6a7-b8c9-0123-def0-234567890123",
+      "description": "For the arithmetic expression {expression}, compute the correct numeric result.",
+      "expected_output": "Return the numeric result with a brief friendly explanation.",
+      "assigned_agent_id": "c3d4e5f6-a7b8-9012-cdef-123456789012"
+    }
+  ],
+  "workflow": {
+    "id": "e5f6a7b8-c9d0-1234-ef01-345678901234",
+    "name": "Calculator Workflow",
+    "description": "Evaluates math expressions using a calculator tool and OpenAI.",
+    "crew_ai_process": "sequential",
+    "agent_ids": ["c3d4e5f6-a7b8-9012-cdef-123456789012"],
+    "task_ids": ["d4e5f6a7-b8c9-0123-def0-234567890123"],
+    "manager_agent_id": null,
+    "llm_provider_model_id": null,
+    "is_conversational": false
+  }
+}

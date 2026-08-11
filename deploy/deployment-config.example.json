@@ -1,0 +1,30 @@
+{
+  "workflow_target": {
+    "type": "github",
+    "github_url": "https://github.com/irvanzarkasie/cai-agentstudio-generator.git"
+  },
+  "deployment_target": {
+    "type": "workbench_model",
+    "deploy_application": true,
+    "auto_redeploy_to_type": false,
+    "workbench_resource_profile": {
+      "num_replicas": 1,
+      "cpu": 2,
+      "mem": 4
+    },
+    "application_resource_profile": {
+      "cpu": 2,
+      "mem": 8
+    }
+  },
+  "deployment_config": {
+    "generation_config": {
+      "max_new_tokens": 4096,
+      "temperature": 0.1
+    },
+    "tool_config": {},
+    "mcp_config": {},
+    "llm_config": {},
+    "environment": {}
+  }
+}
