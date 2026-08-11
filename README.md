@@ -272,7 +272,32 @@ The `default_language_model_id` in `collated_input.json` must match a key in `ll
 | 302 / login HTML from API | Invalid or expired `CDSW_APIV2_KEY` |
 | `malformed apikey` on `/api/v2/projects` | Wrong key format or non-API-scoped key — recreate in User Settings |
 | `401` on `/api/grpc/*` | Key lacks Application/API scope, or expired — recreate key |
+| Deploy metadata: `CML API v2 key validation has failed` | Agent Studio's **internal** deploy key is invalid — run `cmlApiCheck`, then `rotateCmlApi` (see below) |
 | Tool venv build fails | Check `requirements.txt` in tool folder |
+
+### Agent Studio internal CML API key
+
+Deploy uses a **separate** CML API v2 key stored in the Agent Studio project environment (`AGENT_STUDIO_API_KEY_*`), not your personal key in `.env`.
+
+Check status:
+
+```bash
+curl -sS "$AGENT_STUDIO_URL/api/grpc/cmlApiCheck" \
+  -H "Authorization: Bearer $CDSW_APIV2_KEY" | python3 -m json.tool
+```
+
+If `message` is non-empty, rotate the internal key (generates a new key with API + Application scope and redeploys workflows):
+
+```bash
+curl -sS "$AGENT_STUDIO_URL/api/grpc/rotateCmlApi" \
+  -H "Authorization: Bearer $CDSW_APIV2_KEY" | python3 -m json.tool
+```
+
+Then re-run deploy:
+
+```bash
+python scripts/deploy.py --config deploy/deployment-config.example.json --wait 180 --insecure
+```
 
 ---
 

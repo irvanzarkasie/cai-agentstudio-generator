@@ -39,6 +39,25 @@ def main() -> int:
         check("Agent Studio listWorkflows", f"{agent_studio}/api/grpc/listWorkflows", headers),
         check("Agent Studio default model", f"{agent_studio}/api/grpc/getStudioDefaultModel", headers),
     ]
+
+    # Agent Studio stores its own CML API v2 key in project env vars for deployments
+    try:
+        resp = requests.get(
+            f"{agent_studio}/api/grpc/cmlApiCheck",
+            headers=headers,
+            timeout=30,
+            verify=False,
+        )
+        msg = resp.json().get("message", "")
+        ok = resp.status_code == 200 and not msg
+        print(
+            f"[{'OK' if ok else 'FAIL'}] Agent Studio cmlApiCheck: HTTP {resp.status_code}"
+            + (f" — {msg}" if msg else " — internal deploy key valid")
+        )
+        results.append(ok)
+    except requests.RequestException as exc:
+        print(f"[FAIL] Agent Studio cmlApiCheck: {exc}")
+        results.append(False)
     return 0 if all(results) else 1
 
 
