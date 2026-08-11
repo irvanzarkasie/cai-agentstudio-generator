@@ -3,7 +3,7 @@
   "language_models": [
     {
       "model_id": "5d7e9ef3-52ff-47bb-986a-31593f6197ff",
-      "model_name": "gpt-4o",
+      "model_name": "agent_studio_ds_model",
       "generation_config": {
         "max_new_tokens": 4096,
         "temperature": 0.2,

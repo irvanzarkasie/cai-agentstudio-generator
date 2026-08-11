@@ -88,7 +88,7 @@ python scripts/deploy.py --config deploy/deployment-config.example.json --wait 3
 
 - **Kickoff input:** `{"query": "your question"}` — `{query}` is interpolated in task descriptions.
 - **Process:** sequential — Pattern Router → Technical Researcher → Solution Architect.
-- **LLM:** `gpt-4o` (must be registered in Agent Studio; key injected at deploy via `llm_config`).
+- **LLM:** `agent_studio_ds_model` (registered in Agent Studio; OpenAI `gpt-4o` still supported via `model_name: gpt-4o` + deploy `llm_config`).
 
 ## What NOT to do
 

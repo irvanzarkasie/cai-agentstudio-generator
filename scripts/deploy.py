@@ -36,12 +36,19 @@ def apply_env_overrides(config: dict[str, Any]) -> dict[str, Any]:
 
     llm_config = config.setdefault("deployment_config", {}).setdefault("llm_config", {})
     default_llm_id = None
+    default_model_name = ""
     collated_path = REPO_ROOT / "collated_input.json"
     if collated_path.is_file():
         collated = json.loads(collated_path.read_text(encoding="utf-8"))
         default_llm_id = collated.get("default_language_model_id")
+        for entry in collated.get("language_models", []):
+            if entry.get("model_id") == default_llm_id:
+                default_model_name = entry.get("model_name", "")
+                break
 
-    if openai_key and default_llm_id:
+    # Only inject OpenAI deploy-time credentials for direct OpenAI model names.
+    # Studio-registered aliases (e.g. agent_studio_ds_model) use Agent Studio credentials.
+    if openai_key and default_llm_id and default_model_name == "gpt-4o":
         llm_config.setdefault(
             default_llm_id,
             {

@@ -11,7 +11,7 @@ workflow:
   is_conversational: false
 
 language_model:
-  model_name: gpt-4o
+  model_name: agent_studio_ds_model
 
 agents:
   - key: pattern_router
