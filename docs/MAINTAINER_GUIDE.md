@@ -452,8 +452,9 @@ Then redeploy.
 |---------|--------------|
 | Agent returns generic ChromaDB advice | Prompt drift — verify Solution Architect backstory mentions Agent Studio stack |
 | Tool returns empty results | Check bundled `data/graph.json` and slices present in deployed artifact |
-| All tools fail instantly (0s) with agent generic fallback | **Missing module:** Agent Studio sandboxes mount only each tool directory at `/tool`; shared `lib/` is not visible. Run `python scripts/bundle_hybrid_data.py` so each tool vendors `hybrid_rag.py`, `paths.py`, and `tool_runtime.py` alongside `tool.py`. Also verify corpus paths resolve via artifact `cwd` (see `paths.py`). |
+| All tools fail instantly (0s) with agent generic fallback | **Missing module:** Agent Studio sandboxes mount only each tool directory at `/tool`; shared `lib/` is not visible. Run `python scripts/bundle_hybrid_data.py` so each tool vendors `hybrid_rag.py`, `paths.py`, `tool_runtime.py`, and `data/` alongside `tool.py`. |
 | Tool returns `ModuleNotFoundError: tool_runtime` | Same as above — redeploy after rebundling; confirm with `python scripts/test_hybrid_tools.py` (includes isolated tool-dir test). |
+| Tool returns `FileNotFoundError: Graph not found` with cwd `/workspace` | Corpus not reachable from sandbox — rebundle so each tool directory includes `data/graph.json` and `data/slices/` (see `bundle_hybrid_data.py`). |
 | Workflow slow | 3 sequential LLM agents + multiple tool calls; normal for complex queries |
 | Stub tool output | Old deployment — ensure Phase 2 pushed and redeployed |
 

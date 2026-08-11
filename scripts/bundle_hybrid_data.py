@@ -236,6 +236,10 @@ def main() -> int:
         tool_dir.mkdir(parents=True, exist_ok=True)
         for lib_file in lib_src.glob("*.py"):
             shutil.copy2(lib_file, tool_dir / lib_file.name)
+        tool_data = tool_dir / "data"
+        if tool_data.exists():
+            shutil.rmtree(tool_data)
+        shutil.copytree(data_dir, tool_data)
         (tool_dir / "tool.py").write_text(
             render_tool_py(docstring, params, call_expr),
             encoding="utf-8",

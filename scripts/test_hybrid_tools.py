@@ -111,7 +111,37 @@ def test_sandbox_simulation() -> None:
 
     test_isolated_tool_dir("search_design_patterns", {"query": QUERY, "limit": 2})
     test_isolated_tool_dir("recommend_hybrid_agentic_workflow", {"query": QUERY})
-    print("isolated tool dir tests OK (lib vendored per tool)")
+    # Sandbox cwd is often /workspace, not the artifact root — data must live in the tool dir.
+    import shutil
+    import tempfile
+
+    tool_src = TOOLS_ROOT / "search_design_patterns"
+    with tempfile.TemporaryDirectory() as tmp:
+        isolated = Path(tmp) / "search_design_patterns"
+        shutil.copytree(tool_src, isolated)
+        cmd = [
+            sys.executable,
+            str(isolated / "tool.py"),
+            "--user-params",
+            "{}",
+            "--tool-params",
+            json.dumps({"query": QUERY, "limit": 2}),
+        ]
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=tmp,
+            env={**os.environ, "WORKFLOW_DATA_DIRECTORY": ""},
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"isolated sandbox cwd test failed: {result.stderr.strip() or result.stdout.strip()}"
+            )
+        line = result.stdout.strip().splitlines()[-1]
+        assert_no_stub("search_design_patterns", line[len("tool_output ") :])
+    print("isolated tool dir tests OK (lib + data vendored per tool)")
 
 
 def main() -> int:

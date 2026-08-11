@@ -31,8 +31,10 @@ def _candidate_paths(relative: Path, *, tool_file: Path) -> list[Path]:
             candidates.append(path)
 
     cwd = Path.cwd()
-    # cwd is workflow_directory (artifact root) in Agent Studio; prefer it when the tool
-    # runs in an isolated /tool sandbox that cannot see sibling lib/ or data/ paths.
+    tool_dir = tool_file.resolve().parent
+    # Vendored corpus copied into each tool directory for /tool sandbox isolation.
+    add(tool_dir / relative)
+    # cwd is workflow_directory (artifact root) in Agent Studio when available.
     add(cwd / BUNDLED_DATA_PREFIX / relative)
     add(cwd / relative)
     add(workflow_data_root(tool_file=tool_file) / relative)
