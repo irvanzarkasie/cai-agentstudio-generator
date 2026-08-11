@@ -130,10 +130,28 @@ If your default branch is `master`, use that instead of `main`.
 
 ### Step 6 — Verify Agent Studio API access
 
+Quick check (all three endpoints must return HTTP 200):
+
+```bash
+python scripts/verify_connection.py
+```
+
+Or manually:
+
 ```bash
 curl -sS "$AGENT_STUDIO_URL/api/grpc/listWorkflows" \
   -H "Authorization: Bearer $CDSW_APIV2_KEY" | python3 -m json.tool
 ```
+
+**If you see `malformed apikey` (HTTP 500) or `401 Unauthorized`:**
+
+1. In the workbench, go to **User Settings → API Keys → Create API Key**
+2. Set **Scope** to include **API** (required for `/api/v2/*`)
+3. For Agent Studio `/api/grpc/*` calls, also enable **Application** scope if available
+4. Copy the **full** key immediately after creation (64-character hex string)
+5. Update `.env` and re-run `python scripts/verify_connection.py`
+
+Do not use session cookies or CDP CLI credentials in place of a CML API v2 key.
 
 ```bash
 curl -sS "$AGENT_STUDIO_URL/api/grpc/getStudioDefaultModel" \
@@ -251,6 +269,8 @@ The `default_language_model_id` in `collated_input.json` must match a key in `ll
 | `workflow.yaml not found` | Files not at **repo root** — fix layout and push |
 | Deploy job fails on LLM | Missing `OPENAI_API_KEY` in `.env` / `llm_config` |
 | 302 / login HTML from API | Invalid or expired `CDSW_APIV2_KEY` |
+| `malformed apikey` on `/api/v2/projects` | Wrong key format or non-API-scoped key — recreate in User Settings |
+| `401` on `/api/grpc/*` | Key lacks Application/API scope, or expired — recreate key |
 | Tool venv build fails | Check `requirements.txt` in tool folder |
 
 ---
