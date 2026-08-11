@@ -276,6 +276,23 @@ Output: `examples/crew_hybrid_agentic/` with 3 agents, 3 tasks, 11 stub tools. T
 
 Phase 0 does **not** port tool logic or bundle graph/slice data — see `examples/crew_hybrid_agentic/README.md`.
 
+### Phase 1 — bundle hybrid RAG data + port core tools
+
+After Phase 0 export, bundle corpus data and implement the first two tools:
+
+```bash
+python scripts/bundle_hybrid_data.py \
+  --source /path/to/generative_ai_design_patterns
+
+python scripts/test_hybrid_tools.py
+python scripts/validate.py --root examples/crew_hybrid_agentic
+```
+
+This copies `graph.json`, book slices, shared `hybrid_rag_lib`, and real implementations for:
+
+- `search_design_patterns`
+- `retrieve_pattern_technical_context`
+
 ---
 
 ## Deployment payload reference

@@ -1,37 +1,30 @@
-"""
-Stub tool for Phase 0 CollatedInput scaffold.
-
-CrewAI source tool: retrieve_pattern_technical_context
-Replace run_tool() with ported logic from the CrewAI @tool implementation.
-"""
+"""Retrieve book-grounded technical context for one design pattern."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import sys
+from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+_TOOL_FILE = Path(__file__)
+sys.path.insert(0, str(_TOOL_FILE.resolve().parent.parent.parent / "lib"))
+from tool_runtime import HybridUserParameters, build_toolkit
 
-class UserParameters(BaseModel):
-    """Tool configuration (paths, API keys) — populate in Phase 1+."""
+
+class UserParameters(HybridUserParameters):
     pass
 
 
 class ToolParameters(BaseModel):
-    """Arguments supplied by the agent when calling this tool."""
-    input_text: str = Field(
-        default="",
-        description="Placeholder parameter — replace with CrewAI tool signature in Phase 1",
-    )
+    pattern_number: int = Field(description="Design pattern number (1-32)")
 
 
 def run_tool(config: UserParameters, args: ToolParameters) -> str:
-    return (
-        "STUB [retrieve_pattern_technical_context]: not implemented. "
-        "Port from CrewAI toolkit in Phase 1. "
-        f"input_text={args.input_text!r}"
-    )
+    toolkit = build_toolkit(config, _TOOL_FILE)
+    return toolkit.retrieve_pattern_technical_context(args.pattern_number)
 
 
 OUTPUT_KEY = "tool_output"
