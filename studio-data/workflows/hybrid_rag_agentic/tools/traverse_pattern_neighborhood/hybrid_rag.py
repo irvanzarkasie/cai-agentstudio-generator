@@ -666,7 +666,10 @@ class HybridRAGToolkit:
 
     def search_design_patterns(self, query: str, limit: int = 5) -> str:
         if "rag" in query.casefold():
-            rows = self.router.rag_patterns()[:limit]
+            pool = self.router.rag_patterns()
+            rows = search_patterns(pool, query, limit=limit) if pool else []
+            if not rows:
+                rows = pool[:limit]
         else:
             rows = self.router.search(query, limit=limit)
         return json.dumps([self.router.brief(p) for p in rows], separators=(",", ":"))
