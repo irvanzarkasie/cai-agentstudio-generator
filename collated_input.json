@@ -192,7 +192,7 @@
     },
     {
       "id": "ff092d12-5ad4-4080-84ce-87d839e43c50",
-      "description": "If the routing plan has domain_status=OUT_OF_SCOPE, return exactly: {\"skip\": true, \"reason\": \"out_of_scope\"} and stop.\n\nOtherwise, for EVERY pattern in the shortlist call retrieve_pattern_technical_context.\nConsolidate ONLY from tool output: pattern_number, chapter_number, problem, solution, when_to_use, tradeoffs, caveats, and any validation or guardrail notes present in the book excerpt.\n\nDo NOT invent content. Do NOT reference Agent Studio, graph.json, bundled slices, ChromaDB, or this workflow's internal tools.",
+      "description": "If the routing plan has domain_status=OUT_OF_SCOPE, return exactly the single line SKIP_OUT_OF_SCOPE and stop (do not call any tools).\n\nOtherwise, for EVERY pattern in the shortlist call retrieve_pattern_technical_context.\nConsolidate ONLY from tool output: pattern_number, chapter_number, problem, solution, when_to_use, tradeoffs, caveats, and any validation or guardrail notes present in the book excerpt.\n\nDo NOT invent content. Do NOT reference Agent Studio, graph.json, bundled slices, ChromaDB, or this workflow's internal tools.",
       "expected_output": "Book-grounded dossier keyed by pattern_number with chapter_number, production notes, tradeoffs, and validation/guardrail excerpts — or skip marker if out of scope.",
       "assigned_agent_id": "9e008c7d-b2d9-45d6-9dc6-1ab7c8fba8d8"
     },
