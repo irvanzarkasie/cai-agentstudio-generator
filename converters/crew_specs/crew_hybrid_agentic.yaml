@@ -1,0 +1,41 @@
+# Crew spec for crew_hybrid agentic mode (no quality evaluator).
+# Tool split mirrors hybrid_crew.py create_agentic_crew(evaluate=false).
+
+workflow:
+  slug: hybrid_rag_agentic
+  name: Hybrid RAG Agentic Workflow
+  description: >
+    Multi-agent GenAI design pattern router — graph routing, book retrieval,
+    and solution synthesis (ported from CrewAI crew_hybrid).
+  crew_ai_process: sequential
+  is_conversational: false
+
+language_model:
+  model_name: gpt-4o
+
+agents:
+  - key: pattern_router
+    tools:
+      - search_design_patterns
+      - get_design_pattern
+      - patterns_using_concept
+      - related_design_patterns
+      - traverse_pattern_neighborhood
+      - recommend_hybrid_agentic_workflow
+      - expand_design_patterns
+  - key: technical_researcher
+    tools:
+      - retrieve_pattern_technical_context
+      - build_hybrid_context_bundle
+      - validate_hybrid_retrieval
+      - reflect_on_hybrid_retrieval
+  - key: solution_architect
+    tools: []
+
+tasks:
+  - key: route_patterns_task
+    agent: pattern_router
+  - key: retrieve_technical_context_task
+    agent: technical_researcher
+  - key: synthesize_recommendation_task
+    agent: solution_architect

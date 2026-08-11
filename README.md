@@ -32,7 +32,12 @@ This repository defines a sample **Calculator Workflow** (single agent + calcula
 ├── scripts/
 │   ├── validate.py               # Validate artifact before push/deploy
 │   ├── package.py                # Build artifact.tar.gz locally (optional)
-│   └── deploy.py                 # Trigger GitHub-target deploy via Agent Studio API
+│   ├── deploy.py                 # Trigger GitHub-target deploy via Agent Studio API
+│   └── crewai_to_collated.py     # Phase 0: CrewAI YAML → CollatedInput skeleton
+├── converters/
+│   └── crew_specs/               # Crew mode specs (agent/task/tool mapping)
+├── examples/
+│   └── crew_hybrid_agentic/      # Generated export from crew_hybrid (Phase 0)
 ├── .env.example                  # Local secrets template (copy to .env)
 └── requirements-dev.txt
 ```
@@ -241,6 +246,35 @@ Task input key **`expression`** matches the `{expression}` placeholder in `colla
 2. `python scripts/validate.py`
 3. `git commit && git push`
 4. Re-run `python scripts/deploy.py ...`
+
+---
+
+## CrewAI → CollatedInput (Phase 0 converter)
+
+Convert a CrewAI project's `agents.yaml` + `tasks.yaml` into a CollatedInput skeleton with stub tools.
+
+### Inputs
+
+| Input | Purpose |
+|-------|---------|
+| `--config-dir` | CrewAI config folder (`agents.yaml`, `tasks.yaml`) |
+| `--crew-spec` | Workflow metadata, agent order, task order, tool→agent mapping |
+| `-o` | Output directory for the deployable artifact tree |
+
+### Example: crew_hybrid agentic mode
+
+```bash
+python scripts/crewai_to_collated.py \
+  --config-dir /path/to/crew_hybrid/config \
+  --crew-spec converters/crew_specs/crew_hybrid_agentic.yaml \
+  -o examples/crew_hybrid_agentic
+
+python scripts/validate.py --root examples/crew_hybrid_agentic
+```
+
+Output: `examples/crew_hybrid_agentic/` with 3 agents, 3 tasks, 11 stub tools. Task descriptions preserve `{query}` placeholders for kickoff.
+
+Phase 0 does **not** port tool logic or bundle graph/slice data — see `examples/crew_hybrid_agentic/README.md`.
 
 ---
 

@@ -11,12 +11,16 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 REQUIRED_TOP_LEVEL = ("workflow.yaml", "collated_input.json", "studio-data")
 
 
+def artifact_root(explicit: Path | None) -> Path:
+    return explicit.resolve() if explicit else REPO_ROOT
+
+
 def load_json(path: Path) -> dict:
     with path.open(encoding="utf-8") as f:
         return json.load(f)
 
 
-def validate_collated_input(data: dict) -> list[str]:
+def validate_collated_input(data: dict, root: Path = REPO_ROOT) -> list[str]:
     errors: list[str] = []
     required_keys = {
         "default_language_model_id",
@@ -52,7 +56,7 @@ def validate_collated_input(data: dict) -> list[str]:
             errors.append(f"task {task['id']} references unknown agent {aid}")
 
     for tool in data["tool_instances"]:
-        folder = REPO_ROOT / tool["source_folder_path"]
+        folder = root / tool["source_folder_path"]
         code_file = folder / tool["python_code_file_name"]
         req_file = folder / tool["python_requirements_file_name"]
         if not code_file.is_file():
@@ -79,13 +83,24 @@ def validate_collated_input(data: dict) -> list[str]:
 
 
 def main() -> int:
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Validate CollatedInput workflow artifact")
+    parser.add_argument(
+        "--root",
+        type=Path,
+        default=None,
+        help="Artifact root (default: repository root)",
+    )
+    args = parser.parse_args()
+    root = artifact_root(args.root)
     errors: list[str] = []
 
     for name in REQUIRED_TOP_LEVEL:
-        if not (REPO_ROOT / name).exists():
-            errors.append(f"Missing required path at repo root: {name}")
+        if not (root / name).exists():
+            errors.append(f"Missing required path at artifact root: {root / name}")
 
-    workflow_yaml = REPO_ROOT / "workflow.yaml"
+    workflow_yaml = root / "workflow.yaml"
     if workflow_yaml.is_file():
         import yaml
 
@@ -93,13 +108,13 @@ def main() -> int:
         if meta.get("type") != "collated_input":
             errors.append('workflow.yaml type must be "collated_input"')
         input_file = meta.get("input")
-        if input_file and not (REPO_ROOT / input_file).is_file():
+        if input_file and not (root / input_file).is_file():
             errors.append(f"workflow.yaml input file not found: {input_file}")
 
-    collated_path = REPO_ROOT / "collated_input.json"
+    collated_path = root / "collated_input.json"
     if collated_path.is_file():
         try:
-            errors.extend(validate_collated_input(load_json(collated_path)))
+            errors.extend(validate_collated_input(load_json(collated_path), root))
         except json.JSONDecodeError as exc:
             errors.append(f"Invalid JSON in collated_input.json: {exc}")
 
