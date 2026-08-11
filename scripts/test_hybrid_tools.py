@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Smoke-test hybrid RAG tools locally."""
+"""Smoke-test hybrid RAG tools locally and under Agent Studio sandbox env simulation."""
 
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -14,7 +15,7 @@ TOOLS_ROOT = REPO_ROOT / "studio-data/workflows/hybrid_rag_agentic/tools"
 QUERY = "enterprise RAG with reranking and citations"
 
 
-def run_tool(tool_name: str, tool_params: dict) -> str:
+def run_tool(tool_name: str, tool_params: dict, *, cwd: Path | None = None, env: dict | None = None) -> str:
     tool_py = TOOLS_ROOT / tool_name / "tool.py"
     cmd = [
         sys.executable,
@@ -24,7 +25,21 @@ def run_tool(tool_name: str, tool_params: dict) -> str:
         "--tool-params",
         json.dumps(tool_params),
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    merged_env = os.environ.copy()
+    if env:
+        merged_env.update(env)
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=str(cwd or REPO_ROOT),
+        env=merged_env,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"{tool_name} exited {result.returncode}: {result.stderr.strip() or result.stdout.strip()}"
+        )
     line = result.stdout.strip().splitlines()[-1]
     prefix = "tool_output "
     if not line.startswith(prefix):
@@ -35,12 +50,35 @@ def run_tool(tool_name: str, tool_params: dict) -> str:
 def assert_no_stub(tool_name: str, output: str) -> None:
     if "STUB [" in output:
         raise RuntimeError(f"{tool_name} still returns stub output")
+    parsed = json.loads(output)
+    if isinstance(parsed, dict) and parsed.get("error"):
+        raise RuntimeError(f"{tool_name} returned error JSON: {parsed}")
+
+
+def test_sandbox_simulation() -> None:
+    """Simulate Agent Studio: cwd=artifact root + WORKFLOW_DATA_DIRECTORY=/workflow_data."""
+    fake_workflow_data = "/workflow_data"
+    env = {"WORKFLOW_DATA_DIRECTORY": fake_workflow_data}
+    search = json.loads(
+        run_tool(
+            "search_design_patterns",
+            {"query": QUERY, "limit": 2},
+            cwd=REPO_ROOT,
+            env=env,
+        )
+    )
+    assert_no_stub("search_design_patterns", json.dumps(search))
+    if not search:
+        raise RuntimeError("sandbox simulation: expected search hits")
+    print(f"sandbox simulation: search_design_patterns returned {len(search)} patterns with WORKFLOW_DATA_DIRECTORY set")
 
 
 def main() -> int:
     if not TOOLS_ROOT.is_dir():
         print("Run scripts/bundle_hybrid_data.py first", file=sys.stderr)
         return 1
+
+    test_sandbox_simulation()
 
     search = json.loads(run_tool("search_design_patterns", {"query": QUERY, "limit": 3}))
     assert_no_stub("search_design_patterns", json.dumps(search))

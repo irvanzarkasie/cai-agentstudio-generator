@@ -143,7 +143,13 @@ studio-data/workflows/hybrid_rag_agentic/tools/<tool_name>/
 └── requirements.txt  # pydantic>=2.0.0
 ```
 
-Agent Studio builds a **per-tool virtualenv** at deploy time. Tools are invoked via subprocess with JSON `--user-params` and `--tool-params`.
+Agent Studio builds a **per-tool virtualenv** at deploy time. Tools are invoked via subprocess with JSON `--user-params` and `--tool-params`, with **`cwd` set to the workflow artifact root** (repository root for GitHub deploy).
+
+### Path resolution (important)
+
+Agent Studio sets `WORKFLOW_DATA_DIRECTORY=/workflow_data` for read-only **project** files. Bundled corpus files (`data/graph.json`, `data/slices/`) live under `studio-data/workflows/hybrid_rag_agentic/` in the artifact — **not** directly under `/workflow_data`.
+
+The shared `paths.py` resolves bundled data relative to the tool file location (`.../tools/<name>/tool.py` → up 3 levels to `hybrid_rag_agentic/`), with fallbacks for artifact-root cwd. It must **not** treat `WORKFLOW_DATA_DIRECTORY` as the corpus root (that caused pre-fix deploy failures where every tool returned errors in 0s).
 
 Standard tool pattern:
 

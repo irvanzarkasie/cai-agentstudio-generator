@@ -162,9 +162,13 @@ if __name__ == "__main__":
     parser.add_argument("--user-params", required=True)
     parser.add_argument("--tool-params", required=True)
     cli = parser.parse_args()
-    config = UserParameters(**json.loads(cli.user_params))
-    params = ToolParameters(**json.loads(cli.tool_params))
-    print(OUTPUT_KEY, run_tool(config, params))
+    try:
+        config = UserParameters(**json.loads(cli.user_params))
+        params = ToolParameters(**json.loads(cli.tool_params))
+        print(OUTPUT_KEY, run_tool(config, params))
+    except Exception as exc:
+        print(OUTPUT_KEY, json.dumps({{"error": str(exc), "type": type(exc).__name__}}))
+        raise SystemExit(0)
 '''
 
 
