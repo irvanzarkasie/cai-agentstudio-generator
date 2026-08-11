@@ -30,17 +30,18 @@ def _candidate_paths(relative: Path, *, tool_file: Path) -> list[Path]:
         if path not in candidates:
             candidates.append(path)
 
+    cwd = Path.cwd()
+    # cwd is workflow_directory (artifact root) in Agent Studio; prefer it when the tool
+    # runs in an isolated /tool sandbox that cannot see sibling lib/ or data/ paths.
+    add(cwd / BUNDLED_DATA_PREFIX / relative)
+    add(cwd / relative)
     add(workflow_data_root(tool_file=tool_file) / relative)
 
     workflow_data = os.environ.get("WORKFLOW_DATA_DIRECTORY", "").strip()
     if workflow_data:
         wf = Path(workflow_data)
-        add(wf / relative)
         add(wf / BUNDLED_DATA_PREFIX / relative)
-
-    cwd = Path.cwd()
-    add(cwd / BUNDLED_DATA_PREFIX / relative)
-    add(cwd / relative)
+        add(wf / relative)
 
     return candidates
 

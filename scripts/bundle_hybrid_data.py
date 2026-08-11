@@ -138,7 +138,8 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 _TOOL_FILE = Path(__file__)
-sys.path.insert(0, str(_TOOL_FILE.resolve().parent.parent.parent / "lib"))
+# Agent Studio sandboxes mount only the tool directory at /tool; vendored lib lives alongside tool.py.
+sys.path.insert(0, str(_TOOL_FILE.resolve().parent))
 from tool_runtime import HybridUserParameters, build_toolkit
 
 
@@ -227,11 +228,14 @@ def main() -> int:
             return 1
         print("  kept existing bundled corpus (pass --source to refresh graph + slices)")
 
-    copy_tree(lib_src, workflow_root / "lib")
+    lib_dst = workflow_root / "lib"
+    copy_tree(lib_src, lib_dst)
 
     for tool_name, (docstring, params, call_expr) in TOOL_SPECS.items():
         tool_dir = workflow_root / "tools" / tool_name
         tool_dir.mkdir(parents=True, exist_ok=True)
+        for lib_file in lib_src.glob("*.py"):
+            shutil.copy2(lib_file, tool_dir / lib_file.name)
         (tool_dir / "tool.py").write_text(
             render_tool_py(docstring, params, call_expr),
             encoding="utf-8",

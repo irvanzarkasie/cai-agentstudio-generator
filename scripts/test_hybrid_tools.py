@@ -55,6 +55,43 @@ def assert_no_stub(tool_name: str, output: str) -> None:
         raise RuntimeError(f"{tool_name} returned error JSON: {parsed}")
 
 
+def test_isolated_tool_dir(tool_name: str, tool_params: dict) -> None:
+    """Reproduce Agent Studio sandbox: only tool directory contents, no parent lib/."""
+    import shutil
+    import tempfile
+
+    tool_src = TOOLS_ROOT / tool_name
+    with tempfile.TemporaryDirectory() as tmp:
+        isolated = Path(tmp) / tool_name
+        shutil.copytree(tool_src, isolated)
+        cmd = [
+            sys.executable,
+            str(isolated / "tool.py"),
+            "--user-params",
+            "{}",
+            "--tool-params",
+            json.dumps(tool_params),
+        ]
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=str(REPO_ROOT),
+            env={**os.environ, "WORKFLOW_DATA_DIRECTORY": "/workflow_data"},
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"isolated {tool_name} exited {result.returncode}: "
+                f"{result.stderr.strip() or result.stdout.strip()}"
+            )
+        line = result.stdout.strip().splitlines()[-1]
+        prefix = "tool_output "
+        if not line.startswith(prefix):
+            raise RuntimeError(f"Unexpected isolated output from {tool_name}: {line}")
+        assert_no_stub(tool_name, line[len(prefix) :])
+
+
 def test_sandbox_simulation() -> None:
     """Simulate Agent Studio: cwd=artifact root + WORKFLOW_DATA_DIRECTORY=/workflow_data."""
     fake_workflow_data = "/workflow_data"
@@ -71,6 +108,10 @@ def test_sandbox_simulation() -> None:
     if not search:
         raise RuntimeError("sandbox simulation: expected search hits")
     print(f"sandbox simulation: search_design_patterns returned {len(search)} patterns with WORKFLOW_DATA_DIRECTORY set")
+
+    test_isolated_tool_dir("search_design_patterns", {"query": QUERY, "limit": 2})
+    test_isolated_tool_dir("recommend_hybrid_agentic_workflow", {"query": QUERY})
+    print("isolated tool dir tests OK (lib vendored per tool)")
 
 
 def main() -> int:

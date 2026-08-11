@@ -10,7 +10,8 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 _TOOL_FILE = Path(__file__)
-sys.path.insert(0, str(_TOOL_FILE.resolve().parent.parent.parent / "lib"))
+# Agent Studio sandboxes mount only the tool directory at /tool; vendored lib lives alongside tool.py.
+sys.path.insert(0, str(_TOOL_FILE.resolve().parent))
 from tool_runtime import HybridUserParameters, build_toolkit
 
 
