@@ -211,6 +211,30 @@ def main() -> int:
     assert_no_stub("reflect_on_hybrid_retrieval", json.dumps(reflection))
     print(f"reflect_on_hybrid_retrieval: action={reflection.get('action')}")
 
+    for pn, expected_name, expected_chapter in (
+        (1, "Logits Masking", 2),
+        (13, "Chain of Thought", 5),
+        (12, "Deep Search", 4),
+    ):
+        row = json.loads(run_tool("get_design_pattern", {"pattern_number": pn}))
+        if row.get("name") != expected_name:
+            print(f"FAIL: pattern {pn} name={row.get('name')!r}, expected {expected_name!r}", file=sys.stderr)
+            return 1
+        detail = json.loads(run_tool("retrieve_pattern_technical_context", {"pattern_number": pn}))
+        if detail.get("name") != expected_name:
+            print(
+                f"FAIL: retrieve pattern {pn} name={detail.get('name')!r}, expected {expected_name!r}",
+                file=sys.stderr,
+            )
+            return 1
+        if detail.get("chapter_number") != expected_chapter:
+            print(
+                f"FAIL: pattern {pn} chapter={detail.get('chapter_number')}, expected {expected_chapter}",
+                file=sys.stderr,
+            )
+            return 1
+    print("canonical pattern name/chapter checks OK")
+
     print("All 11 hybrid RAG tool smoke tests OK")
     return 0
 

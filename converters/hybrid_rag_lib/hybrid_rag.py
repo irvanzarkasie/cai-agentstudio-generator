@@ -51,13 +51,13 @@ AGENTIC_STACK: list[dict[str, Any]] = [
     {
         "order": 4,
         "pattern_number": 13,
-        "name": "Self-RAG (Reflection in RAG)",
+        "name": "Chain of Thought",
         "implementation_in_our_stack": "Reflection gate: validate bundle → expand if insufficient.",
     },
     {
         "order": 5,
         "pattern_number": 12,
-        "name": "Corrective RAG (CRAG)",
+        "name": "Deep Search",
         "implementation_in_our_stack": "One corrective re-retrieval pass when validation warns.",
     },
     {
@@ -107,6 +107,85 @@ BELONGS_TO_EDGE = "BELONGS_TO"
 CHAPTER_REF_RE = re.compile(r"\bchapter\s+(\d+)\b", re.IGNORECASE)
 PATTERN_REF_RE = re.compile(r"Pattern\s+(?:\[)?(\d+)(?:\])?", re.IGNORECASE)
 
+# Book-canonical names/chapters (from slice headings + Generative AI Design Patterns TOC).
+# graph.json name fields are sometimes wrong; always expose these to agents and users.
+CANONICAL_PATTERN_NAMES: dict[int, str] = {
+    1: "Logits Masking",
+    2: "Grammar",
+    3: "Style Transfer",
+    4: "Reverse Neutralization",
+    5: "Content Optimization",
+    6: "Basic RAG",
+    7: "Semantic Indexing",
+    8: "Indexing at Scale",
+    9: "Index-Aware Retrieval",
+    10: "Node Postprocessing",
+    11: "Trustworthy Generation",
+    12: "Deep Search",
+    13: "Chain of Thought",
+    14: "Tree of Thoughts (ToT)",
+    15: "Adapter Tuning",
+    16: "Evol-Instruct",
+    17: "LLM-as-Judge",
+    18: "Reflection",
+    19: "Dependency Injection",
+    20: "Prompt Optimization",
+    21: "Tool Calling",
+    22: "Code Execution",
+    23: "Multiagent Collaboration",
+    24: "Small Language Model",
+    25: "Prompt Caching",
+    26: "Inference Optimization",
+    27: "Degradation Testing",
+    28: "Long-Term Memory",
+    29: "Template Generation",
+    30: "Assembled Reformat",
+    31: "Self-Check",
+    32: "Guardrails",
+}
+CANONICAL_PATTERN_CHAPTERS: dict[int, int] = {
+    1: 2, 2: 2, 3: 2, 4: 2, 5: 2,
+    6: 3, 7: 3, 8: 3,
+    9: 4, 10: 4, 11: 4, 12: 4,
+    13: 5, 14: 5, 15: 5, 16: 5,
+    17: 6, 18: 6, 19: 6, 20: 6,
+    21: 7, 22: 7, 23: 7,
+    24: 8, 25: 8, 26: 8, 27: 8, 28: 8,
+    29: 9, 30: 9, 31: 9, 32: 9,
+}
+
+
+def canonical_pattern_name(pattern_number: int, fallback: str = "") -> str:
+    return CANONICAL_PATTERN_NAMES.get(int(pattern_number), fallback or f"Pattern {pattern_number}")
+
+
+def resolve_chapter_number(
+    pattern_number: int,
+    *,
+    chapter_info: dict[str, Any] | None = None,
+    pattern: dict[str, Any] | None = None,
+) -> int | None:
+    if chapter_info and chapter_info.get("chapter_number") is not None:
+        return int(chapter_info["chapter_number"])
+    if pattern and pattern.get("chapter") is not None:
+        return int(pattern["chapter"])
+    if pattern:
+        inferred = infer_chapter_from_notes(pattern)
+        if inferred is not None:
+            return inferred
+    return CANONICAL_PATTERN_CHAPTERS.get(int(pattern_number))
+
+
+def normalize_pattern(pattern: dict[str, Any]) -> dict[str, Any]:
+    """Return a shallow copy with book-canonical name."""
+    pn = int(pattern[ENTITY_ID_FIELD])
+    normalized = dict(pattern)
+    normalized["name"] = canonical_pattern_name(pn, str(pattern.get("name") or ""))
+    chapter = resolve_chapter_number(pn, pattern=pattern)
+    if chapter is not None:
+        normalized["chapter"] = chapter
+    return normalized
+
 
 def query_terms(query: str) -> set[str]:
     terms = set(re.findall(r"[a-z0-9]+", query.casefold()))
@@ -142,22 +221,18 @@ def pattern_brief(
     *,
     chapter_info: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    pn = int(pattern[ENTITY_ID_FIELD])
     brief: dict[str, Any] = {
-        "pattern_number": pattern.get("pattern_number"),
-        "name": pattern.get("name"),
+        "pattern_number": pn,
+        "name": canonical_pattern_name(pn, str(pattern.get("name") or "")),
         "problem": pattern.get("problem"),
         "when_to_use": pattern.get("when_to_use"),
         "tradeoffs": pattern.get("tradeoffs"),
     }
-    chapter_number = None
+    chapter_number = resolve_chapter_number(pn, chapter_info=chapter_info, pattern=pattern)
     chapter_title = None
     if chapter_info:
-        chapter_number = chapter_info.get("chapter_number")
         chapter_title = chapter_info.get("chapter_title") or chapter_info.get("chapter_theme")
-    elif pattern.get("chapter") is not None:
-        chapter_number = pattern.get("chapter")
-    else:
-        chapter_number = infer_chapter_from_notes(pattern)
     if chapter_number is not None:
         brief["chapter_number"] = chapter_number
     if chapter_title:
@@ -169,7 +244,7 @@ class PatternGraphIndex:
     def __init__(self, graph_path: Path) -> None:
         data = json.loads(graph_path.read_text(encoding="utf-8"))
         self.patterns = {
-            int(n[ENTITY_ID_FIELD]): n
+            int(n[ENTITY_ID_FIELD]): normalize_pattern(n)
             for n in data.get("nodes", [])
             if n.get("label") == ENTITY_GRAPH_LABEL and n.get(ENTITY_ID_FIELD) is not None
         }
@@ -207,7 +282,17 @@ class PatternGraphIndex:
         return self.patterns.get(pattern_number)
 
     def chapter_for(self, pattern_number: int) -> dict[str, Any] | None:
-        return self.pattern_chapters.get(pattern_number)
+        info = self.pattern_chapters.get(pattern_number)
+        if info and info.get("chapter_number") is not None:
+            return info
+        chapter = CANONICAL_PATTERN_CHAPTERS.get(pattern_number)
+        if chapter is None:
+            return info
+        return {
+            "chapter_number": chapter,
+            "chapter_title": info.get("chapter_title") if info else None,
+            "chapter_theme": info.get("chapter_theme") if info else None,
+        }
 
     def brief(self, pattern: dict[str, Any]) -> dict[str, Any]:
         pn = int(pattern[ENTITY_ID_FIELD])
@@ -475,7 +560,7 @@ def retrieve_pattern_technical_detail(
     include_graph_notes: bool = True,
 ) -> PatternTechnicalDetail:
     pn = int(pattern[ENTITY_ID_FIELD])
-    pattern_name = str(pattern.get("name") or "")
+    pattern_name = canonical_pattern_name(pn, str(pattern.get("name") or ""))
     located = locate_best_pattern_slice(slices_dir, pn, pattern_name=pattern_name)
     if not located:
         return PatternTechnicalDetail(
@@ -633,14 +718,17 @@ class HybridContextBundle:
         return "\n".join(parts)
 
 
-def detail_payload(detail: PatternTechnicalDetail, *, max_chars: int | None = None) -> dict[str, Any]:
-    pn = detail.pattern.get("pattern_number")
-    chapter_info = None
-    if pn is not None:
-        chapter_info = infer_chapter_from_notes(detail.pattern)
+def detail_payload(
+    detail: PatternTechnicalDetail,
+    *,
+    max_chars: int | None = None,
+    chapter_info: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    pn = int(detail.pattern[ENTITY_ID_FIELD])
+    chapter_number = resolve_chapter_number(pn, chapter_info=chapter_info, pattern=detail.pattern)
     payload: dict[str, Any] = {
         "pattern_number": pn,
-        "name": detail.pattern.get("name"),
+        "name": canonical_pattern_name(pn, str(detail.pattern.get("name") or "")),
         "slice": detail.slice_name,
         "overview": detail.overview,
         "problem": detail.problem,
@@ -651,8 +739,12 @@ def detail_payload(detail: PatternTechnicalDetail, *, max_chars: int | None = No
         "code_blocks": detail.code_blocks,
         "technical_text": detail.as_technical_text(max_chars=max_chars),
     }
-    if chapter_info is not None:
-        payload["chapter_number"] = chapter_info
+    if chapter_number is not None:
+        payload["chapter_number"] = chapter_number
+        if chapter_info:
+            title = chapter_info.get("chapter_title") or chapter_info.get("chapter_theme")
+            if title:
+                payload["chapter_title"] = title
     return payload
 
 
@@ -679,13 +771,8 @@ class HybridRAGToolkit:
         if not pattern:
             return json.dumps({"error": f"Pattern {pattern_number} not found"})
         detail = retrieve_pattern_technical_detail(pattern, self.slices_dir)
-        payload = detail_payload(detail)
         chapter = self.router.chapter_for(pattern_number)
-        if chapter and chapter.get("chapter_number") is not None:
-            payload["chapter_number"] = chapter["chapter_number"]
-            title = chapter.get("chapter_title") or chapter.get("chapter_theme")
-            if title:
-                payload["chapter_title"] = title
+        payload = detail_payload(detail, chapter_info=chapter)
         return json.dumps(payload, separators=(",", ":"))
 
     def get_design_pattern(self, pattern_number: int) -> str:
