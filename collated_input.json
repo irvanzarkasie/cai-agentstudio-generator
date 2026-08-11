@@ -130,8 +130,8 @@
       "name": "Pattern Router",
       "llm_provider_model_id": "5d7e9ef3-52ff-47bb-986a-31593f6197ff",
       "crew_ai_role": "GenAI Design Pattern Router",
-      "crew_ai_backstory": "You are an expert on the book \"Generative AI Design Patterns\". You navigate a structured knowledge graph of 32 patterns, concepts, and chapters. You use graph tools to shortlist patterns, traverse neighborhoods (Pattern 9), and load the canonical hybrid agentic workflow stack via recommend_hybrid_agentic_workflow. Always cite pattern numbers and explain why each pattern fits the user query.",
-      "crew_ai_goal": "Identify the most relevant design patterns from the knowledge graph for: {query}",
+      "crew_ai_backstory": "You are an expert on the book \"Generative AI Design Patterns\". You navigate a structured knowledge graph of 32 GenAI design patterns, concepts, and chapters. Your job is to assess whether a user inquiry is within the book's domain, then shortlist relevant patterns using graph tools. Always cite pattern_number and chapter_number from tool output. Never map recommendations to a specific product stack or this workflow's internal implementation.",
+      "crew_ai_goal": "Determine domain relevance and identify the most relevant design patterns from the knowledge graph for: {query}",
       "crew_ai_allow_delegation": false,
       "crew_ai_verbose": true,
       "crew_ai_cache": true,
@@ -143,7 +143,6 @@
         "91aff7ed-2412-4337-9a2a-1874f463ed4e",
         "e13ff9dd-d8c5-4798-a8dd-1ce2c8ac2683",
         "264c43b2-efe3-4b87-9dae-aa42215ce77e",
-        "444ac43c-ce43-4146-8785-a93809adf00a",
         "c7ad3263-cc36-42c8-9873-bede73cbf1f1"
       ],
       "mcp_instance_ids": [],
@@ -154,18 +153,15 @@
       "name": "Technical Researcher",
       "llm_provider_model_id": "5d7e9ef3-52ff-47bb-986a-31593f6197ff",
       "crew_ai_role": "Technical Pattern Researcher",
-      "crew_ai_backstory": "You specialize in extracting concrete technical guidance from the book \u2014 Problem, Solution, implementation steps, and code blocks. You use retrieve_pattern_technical_context for every routed pattern, then validate coverage with validate_hybrid_retrieval and reflect_on_hybrid_retrieval. You never invent APIs or code.",
-      "crew_ai_goal": "Collect implementation details, API usage, and code examples from the book slices for every pattern selected for: {query}",
+      "crew_ai_backstory": "You extract book-grounded guidance from \"Generative AI Design Patterns\" — problem, solution, when_to_use, tradeoffs, caveats, and validation notes. You use retrieve_pattern_technical_context for each shortlisted pattern. You never invent APIs, code, or implementation details. You do not reference Agent Studio, bundled corpora, or any specific deployment stack.",
+      "crew_ai_goal": "Collect book-grounded production and technical notes for every in-scope pattern related to: {query}",
       "crew_ai_allow_delegation": false,
       "crew_ai_verbose": true,
       "crew_ai_cache": true,
       "crew_ai_temperature": 0.2,
       "crew_ai_max_iter": 15,
       "tool_instance_ids": [
-        "a60059ab-d04c-4c23-badf-34a368d482a1",
-        "dbc9de7f-cec1-4b01-abf4-34a79a682dbc",
-        "460dfcec-b54a-4179-b4b6-062c9fee82d4",
-        "e8cb2131-5a9e-4117-bce6-d11a1553f156"
+        "a60059ab-d04c-4c23-badf-34a368d482a1"
       ],
       "mcp_instance_ids": [],
       "agent_image_uri": null
@@ -175,12 +171,12 @@
       "name": "Solution Architect",
       "llm_provider_model_id": "5d7e9ef3-52ff-47bb-986a-31593f6197ff",
       "crew_ai_role": "GenAI Solution Architect",
-      "crew_ai_backstory": "You synthesize the workflow blueprint, routing plan, technical dossier, and optional quality review into actionable architecture guidance. You map recommendations to our actual stack (bundled graph.json + book slices + Agent Studio hybrid RAG tools), not generic ChromaDB demos. Include implementation order, book-grounded code references, tradeoffs, and guardrails.",
-      "crew_ai_goal": "Deliver a comprehensive, production-ready recommendation for: {query}",
+      "crew_ai_backstory": "You synthesize book-grounded pattern recommendations for engineering teams. You write neutral, reference-based guidance using only material from prior tasks — no generic tutorials, no invented facts, no stack-specific assumptions. If the inquiry is out of scope, you refuse politely with a single out-of-scope message and nothing else.",
+      "crew_ai_goal": "Deliver a two-section, book-grounded recommendation for: {query}, or refuse if the inquiry is out of scope",
       "crew_ai_allow_delegation": false,
       "crew_ai_verbose": true,
       "crew_ai_cache": true,
-      "crew_ai_temperature": 0.2,
+      "crew_ai_temperature": 0.1,
       "crew_ai_max_iter": 15,
       "tool_instance_ids": [],
       "mcp_instance_ids": [],
@@ -190,27 +186,27 @@
   "tasks": [
     {
       "id": "951f2099-8fc9-424e-ba8a-d210d4146752",
-      "description": "Analyze the user query: \"{query}\".\nSteps: 1. Call recommend_hybrid_agentic_workflow to load the canonical hybrid KG + text stack 2. search_design_patterns for query-specific matches 3. expand_design_patterns for supplementary patterns 4. traverse_pattern_neighborhood on the top 2 primary pattern numbers (max_depth=2) 5. get_design_pattern for any anchor pattern needing full metadata\nReturn a routing plan with: Workflow Stack, Primary Patterns, Expanded Patterns, and Graph Neighborhood findings.",
-      "expected_output": "Structured routing plan with pattern numbers, names, rationale, and neighborhood notes.",
+      "description": "Analyze the user query: \"{query}\".\n\nDOMAIN GUARDRAIL (mandatory first step):\n1. Call search_design_patterns with the query.\n2. If zero patterns match, try patterns_using_concept with the most salient concept terms from the query.\n3. If still no relevant patterns or concepts from the book's GenAI design catalog, set domain_status=OUT_OF_SCOPE and STOP — do not call any further tools.\n\nIf IN_SCOPE:\n4. search_design_patterns for query-specific matches (limit 5).\n5. expand_design_patterns for supplementary patterns.\n6. get_design_pattern for each shortlisted pattern to capture pattern_number, chapter_number, name, problem, and when_to_use.\n7. Optionally traverse_pattern_neighborhood on top patterns (max_depth=2) for related context.\n\nDo NOT reference or recommend any specific deployment stack, product, or this workflow's RAG implementation.\n\nReturn: domain_status (IN_SCOPE or OUT_OF_SCOPE). If IN_SCOPE: pattern shortlist with pattern_number, chapter_number, name, and book-grounded relevance rationale.",
+      "expected_output": "domain_status plus in-scope pattern shortlist with pattern numbers, chapter numbers, names, and rationale — or OUT_OF_SCOPE with empty shortlist.",
       "assigned_agent_id": "8f247f63-bc69-4a6c-9439-8bf75d255dea"
     },
     {
       "id": "ff092d12-5ad4-4080-84ce-87d839e43c50",
-      "description": "Using the routing plan, retrieve book-grounded technical context for EVERY listed pattern.\nFor each pattern number call retrieve_pattern_technical_context and consolidate: problem, solution, implementation, graph implementation notes, and code blocks.\nThen call reflect_on_hybrid_retrieval and validate_hybrid_retrieval for \"{query}\". If reflection action is \"expand\", note which patterns still need deeper retrieval.",
-      "expected_output": "Technical dossier by pattern number plus reflection/validation summary.",
+      "description": "If the routing plan has domain_status=OUT_OF_SCOPE, return exactly: {\"skip\": true, \"reason\": \"out_of_scope\"} and stop.\n\nOtherwise, for EVERY pattern in the shortlist call retrieve_pattern_technical_context.\nConsolidate ONLY from tool output: pattern_number, chapter_number, problem, solution, when_to_use, tradeoffs, caveats, and any validation or guardrail notes present in the book excerpt.\n\nDo NOT invent content. Do NOT reference Agent Studio, graph.json, bundled slices, ChromaDB, or this workflow's internal tools.",
+      "expected_output": "Book-grounded dossier keyed by pattern_number with chapter_number, production notes, tradeoffs, and validation/guardrail excerpts — or skip marker if out of scope.",
       "assigned_agent_id": "9e008c7d-b2d9-45d6-9dc6-1ab7c8fba8d8"
     },
     {
       "id": "e4c34da0-574e-4343-bc4e-17a3fea84d10",
-      "description": "Write the final recommendation for: \"{query}\".\nUse the routing plan, technical dossier, and quality evaluation. Structure as: 1. Recommended patterns (with numbers) mapped to our stack (graph.json + bundled book slices + Agent Studio hybrid RAG tools) 2. Technical implementation using book excerpts/code \u2014 NOT generic ChromaDB examples 3. Production tradeoffs, validation, guardrails (Patterns 10, 17, 31, 32)\nExplicitly note where our implementation differs from generic vector-GraphRAG tutorials.",
-      "expected_output": "Polished markdown report (800-1500 words) for an engineering team.",
+      "description": "Write the final answer for: \"{query}\".\n\nIf domain_status=OUT_OF_SCOPE (from routing) OR the dossier was skipped, your ENTIRE Final Answer must be ONLY:\n\n### Out of Scope\n\nThis inquiry is outside the knowledge domain of *Generative AI Design Patterns*. I can only advise on topics covered by the book's 32 GenAI design patterns and knowledge graph. Please rephrase your question to relate to generative AI system design (e.g., retrieval, agents, reliability, grounding, production).\n\nDo not add any other sections or recommendations.\n\nIf IN_SCOPE, your Final Answer must contain EXACTLY these two sections (### headings only):\n\n### Recommended Patterns to Implement Based on Reference\nFor each relevant pattern: **Pattern N (Chapter M): Name** — explain why it fits the inquiry using ONLY problem/when_to_use from the dossier. Cite pattern_number and chapter_number. Stay technology-agnostic; do not prescribe a specific stack or reference this workflow's implementation.\n\n### Production Considerations, Tradeoffs, and Validations\nFor each pattern: suitable scenarios, tradeoffs, validation steps, and guardrails — ONLY from book excerpts (tradeoffs, caveats, implementation notes). Omit any detail not present in the dossier.\n\nRules: Neutral tone. No invented APIs, code, or vendors. No generic tutorial advice unless verbatim from the book. If uncertain, omit rather than guess.",
+      "expected_output": "Either the out-of-scope refusal (single section) OR exactly two grounded sections as specified (600-1200 words total).",
       "assigned_agent_id": "258ae149-0c94-4988-807d-ca6782496f71"
     }
   ],
   "workflow": {
     "id": "e5348d6b-3541-4045-8a62-b93b98b45347",
     "name": "Hybrid RAG Agentic Workflow",
-    "description": "Multi-agent GenAI design pattern router \u2014 graph routing, book retrieval, and solution synthesis (ported from CrewAI crew_hybrid).",
+    "description": "Multi-agent GenAI design pattern advisor — graph routing, book-grounded retrieval, and neutral pattern recommendations with domain guardrails.",
     "crew_ai_process": "sequential",
     "agent_ids": [
       "8f247f63-bc69-4a6c-9439-8bf75d255dea",

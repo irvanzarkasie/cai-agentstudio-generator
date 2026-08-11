@@ -102,6 +102,9 @@ STOPWORDS = {
     "a", "an", "and", "are", "at", "be", "by", "for", "in", "is", "of", "on",
     "or", "the", "to", "with",
 }
+CHAPTER_GRAPH_LABEL = "Chapter"
+BELONGS_TO_EDGE = "BELONGS_TO"
+CHAPTER_REF_RE = re.compile(r"\bchapter\s+(\d+)\b", re.IGNORECASE)
 PATTERN_REF_RE = re.compile(r"Pattern\s+(?:\[)?(\d+)(?:\])?", re.IGNORECASE)
 
 
@@ -125,14 +128,41 @@ def search_patterns(patterns: list[dict[str, Any]], query: str, limit: int = 5) 
     return [p for _, p in scored[:limit]]
 
 
-def pattern_brief(pattern: dict[str, Any]) -> dict[str, Any]:
-    return {
+def infer_chapter_from_notes(pattern: dict[str, Any]) -> int | None:
+    for field in ("implementation_notes", "solution", "when_to_use", "problem"):
+        text = str(pattern.get(field) or "")
+        match = CHAPTER_REF_RE.search(text)
+        if match:
+            return int(match.group(1))
+    return None
+
+
+def pattern_brief(
+    pattern: dict[str, Any],
+    *,
+    chapter_info: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    brief: dict[str, Any] = {
         "pattern_number": pattern.get("pattern_number"),
         "name": pattern.get("name"),
         "problem": pattern.get("problem"),
         "when_to_use": pattern.get("when_to_use"),
         "tradeoffs": pattern.get("tradeoffs"),
     }
+    chapter_number = None
+    chapter_title = None
+    if chapter_info:
+        chapter_number = chapter_info.get("chapter_number")
+        chapter_title = chapter_info.get("chapter_title") or chapter_info.get("chapter_theme")
+    elif pattern.get("chapter") is not None:
+        chapter_number = pattern.get("chapter")
+    else:
+        chapter_number = infer_chapter_from_notes(pattern)
+    if chapter_number is not None:
+        brief["chapter_number"] = chapter_number
+    if chapter_title:
+        brief["chapter_title"] = chapter_title
+    return brief
 
 
 class PatternGraphIndex:
@@ -145,7 +175,23 @@ class PatternGraphIndex:
         }
         self.concept_patterns: dict[str, list[int]] = {}
         self.pattern_concepts: dict[int, set[str]] = {}
+        self.pattern_chapters: dict[int, dict[str, Any]] = {}
         nodes = {n["id"]: n for n in data.get("nodes", [])}
+        for edge in data.get("edges", []):
+            if edge.get("label") == BELONGS_TO_EDGE:
+                src = nodes.get(edge["source"], {})
+                tgt = nodes.get(edge["target"], {})
+                if (
+                    src.get("label") == ENTITY_GRAPH_LABEL
+                    and tgt.get("label") == CHAPTER_GRAPH_LABEL
+                    and src.get(ENTITY_ID_FIELD) is not None
+                ):
+                    pn = int(src[ENTITY_ID_FIELD])
+                    self.pattern_chapters[pn] = {
+                        "chapter_number": tgt.get("number"),
+                        "chapter_title": tgt.get("title"),
+                        "chapter_theme": tgt.get("theme"),
+                    }
         for edge in data.get("edges", []):
             if edge.get("label") != USES_CONCEPT_EDGE:
                 continue
@@ -159,6 +205,13 @@ class PatternGraphIndex:
 
     def get_pattern(self, pattern_number: int) -> dict[str, Any] | None:
         return self.patterns.get(pattern_number)
+
+    def chapter_for(self, pattern_number: int) -> dict[str, Any] | None:
+        return self.pattern_chapters.get(pattern_number)
+
+    def brief(self, pattern: dict[str, Any]) -> dict[str, Any]:
+        pn = int(pattern[ENTITY_ID_FIELD])
+        return pattern_brief(pattern, chapter_info=self.chapter_for(pn))
 
     def rag_patterns(self) -> list[dict[str, Any]]:
         ids = sorted(set(self.concept_patterns.get("rag", [])))
@@ -581,8 +634,12 @@ class HybridContextBundle:
 
 
 def detail_payload(detail: PatternTechnicalDetail, *, max_chars: int | None = None) -> dict[str, Any]:
-    return {
-        "pattern_number": detail.pattern.get("pattern_number"),
+    pn = detail.pattern.get("pattern_number")
+    chapter_info = None
+    if pn is not None:
+        chapter_info = infer_chapter_from_notes(detail.pattern)
+    payload: dict[str, Any] = {
+        "pattern_number": pn,
         "name": detail.pattern.get("name"),
         "slice": detail.slice_name,
         "overview": detail.overview,
@@ -594,6 +651,9 @@ def detail_payload(detail: PatternTechnicalDetail, *, max_chars: int | None = No
         "code_blocks": detail.code_blocks,
         "technical_text": detail.as_technical_text(max_chars=max_chars),
     }
+    if chapter_info is not None:
+        payload["chapter_number"] = chapter_info
+    return payload
 
 
 class HybridRAGToolkit:
@@ -609,20 +669,27 @@ class HybridRAGToolkit:
             rows = self.router.rag_patterns()[:limit]
         else:
             rows = self.router.search(query, limit=limit)
-        return json.dumps([pattern_brief(p) for p in rows], separators=(",", ":"))
+        return json.dumps([self.router.brief(p) for p in rows], separators=(",", ":"))
 
     def retrieve_pattern_technical_context(self, pattern_number: int) -> str:
         pattern = self.router.get_pattern(pattern_number)
         if not pattern:
             return json.dumps({"error": f"Pattern {pattern_number} not found"})
         detail = retrieve_pattern_technical_detail(pattern, self.slices_dir)
-        return json.dumps(detail_payload(detail), separators=(",", ":"))
+        payload = detail_payload(detail)
+        chapter = self.router.chapter_for(pattern_number)
+        if chapter and chapter.get("chapter_number") is not None:
+            payload["chapter_number"] = chapter["chapter_number"]
+            title = chapter.get("chapter_title") or chapter.get("chapter_theme")
+            if title:
+                payload["chapter_title"] = title
+        return json.dumps(payload, separators=(",", ":"))
 
     def get_design_pattern(self, pattern_number: int) -> str:
         pattern = self.router.get_pattern(pattern_number)
         if not pattern:
             return json.dumps({"error": f"Pattern {pattern_number} not found"})
-        payload = pattern_brief(pattern)
+        payload = self.router.brief(pattern)
         payload["solution"] = pattern.get("solution")
         payload["implementation_notes"] = pattern.get("implementation_notes")
         payload["related_patterns"] = pattern.get("related_patterns") or []
@@ -630,7 +697,7 @@ class HybridRAGToolkit:
 
     def patterns_using_concept(self, concept_name: str) -> str:
         rows = self.router.patterns_using_concept(concept_name)
-        return json.dumps([pattern_brief(p) for p in rows], separators=(",", ":"))
+        return json.dumps([self.router.brief(p) for p in rows], separators=(",", ":"))
 
     def related_design_patterns(self, pattern_number: int, limit: int = 5) -> str:
         related = self.router.get_related_patterns(pattern_number, limit=limit)
@@ -642,7 +709,7 @@ class HybridRAGToolkit:
             if pn in seen:
                 continue
             seen.add(pn)
-            merged.append(pattern_brief(row))
+            merged.append(self.router.brief(row))
         return json.dumps(merged, separators=(",", ":"))
 
     def traverse_pattern_neighborhood(self, pattern_number: int, max_depth: int = 2) -> str:
@@ -664,14 +731,14 @@ class HybridRAGToolkit:
                         continue
                     seen.add(rpn)
                     next_frontier.append(rpn)
-                    layer_patterns.append(pattern_brief(row))
+                    layer_patterns.append(self.router.brief(row))
                 for row in self.router.patterns_sharing_concepts(pn, limit=4):
                     rpn = int(row["pattern_number"])
                     if rpn in seen:
                         continue
                     seen.add(rpn)
                     next_frontier.append(rpn)
-                    layer_patterns.append(pattern_brief(row))
+                    layer_patterns.append(self.router.brief(row))
             if layer_patterns:
                 layers.append({"depth": depth + 1, "patterns": layer_patterns})
             frontier = next_frontier
@@ -680,7 +747,7 @@ class HybridRAGToolkit:
 
         return json.dumps(
             {
-                "start_pattern": pattern_brief(start),
+                "start_pattern": self.router.brief(start),
                 "max_depth": max_depth,
                 "linked_slice_hint": "Use retrieve_pattern_technical_context for each discovered pattern.",
                 "layers": layers,
@@ -699,7 +766,7 @@ class HybridRAGToolkit:
                 "query": query,
                 "domain": "generative_ai_design_patterns",
                 "recommended_stack": AGENTIC_STACK,
-                "query_matched_patterns": [pattern_brief(p) for p in matched],
+                "query_matched_patterns": [self.router.brief(p) for p in matched],
             },
             separators=(",", ":"),
         )
@@ -747,8 +814,8 @@ class HybridRAGToolkit:
         return json.dumps(
             {
                 "query": bundle.query,
-                "primary_patterns": [pattern_brief(p) for p in bundle.primary_patterns],
-                "expanded_patterns": [pattern_brief(p) for p in bundle.expanded_patterns],
+                "primary_patterns": [self.router.brief(p) for p in bundle.primary_patterns],
+                "expanded_patterns": [self.router.brief(p) for p in bundle.expanded_patterns],
                 "expansion_reasons": bundle.expansion_reasons,
                 "evidence": [detail_payload(d, max_chars=4000) for d in bundle.evidence],
                 "expanded_technical": [
@@ -762,8 +829,8 @@ class HybridRAGToolkit:
         bundle = self.build_hybrid_context(query)
         return json.dumps(
             {
-                "primary_patterns": [pattern_brief(p) for p in bundle.primary_patterns[:5]],
-                "expanded_patterns": [pattern_brief(p) for p in bundle.expanded_patterns],
+                "primary_patterns": [self.router.brief(p) for p in bundle.primary_patterns[:5]],
+                "expanded_patterns": [self.router.brief(p) for p in bundle.expanded_patterns],
                 "expansion_reasons": {str(k): v for k, v in bundle.expansion_reasons.items()},
             },
             separators=(",", ":"),
